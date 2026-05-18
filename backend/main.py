@@ -1,12 +1,15 @@
 import os
 import uuid
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from services.parser import extract_text_from_file
 from services.gemini import run_reviewer_panel
 from services.report_generator import generate_markdown_report
+from services.pdf_report import generate_pdf_report
+from services.streaming import run_streaming_review
 
 
 app = FastAPI(
@@ -108,3 +111,65 @@ async def analyze_application(file: UploadFile = File(...)):
         "report_path": report_path,
         "result": result
     }
+
+
+@app.post("/report/pdf")
+async def create_pdf_report(payload: dict):
+    job_id = payload.get("job_id", str(uuid.uuid4()))
+    result = payload.get("result")
+
+    if not result:
+        return {
+            "error": "Missing result payload."
+        }
+
+    pdf_path = generate_pdf_report(
+        job_id=job_id,
+        result=result,
+        output_dir=REPORT_DIR
+    )
+
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=f"{job_id}-revieweros-executive-report.pdf"
+    )
+
+
+@app.websocket("/ws/analyze")
+async def websocket_analyze(websocket: WebSocket):
+    await websocket.accept()
+
+    try:
+        payload = await websocket.receive_json()
+
+        job_id = payload.get("job_id", str(uuid.uuid4()))
+        file_name = payload.get("file_name", "streamed_application.txt")
+        application_text = payload.get("application_text", "")
+
+        if not application_text.strip():
+            await websocket.send_json({
+                "type": "error",
+                "message": "No application text was provided."
+            })
+            await websocket.close()
+            return
+
+        await run_streaming_review(
+            websocket=websocket,
+            application_text=application_text,
+            file_name=file_name,
+            job_id=job_id
+        )
+
+        await websocket.close()
+
+    except WebSocketDisconnect:
+        print("WebSocket disconnected.")
+
+    except Exception as error:
+        await websocket.send_json({
+            "type": "error",
+            "message": str(error)
+        })
+        await websocket.close()
