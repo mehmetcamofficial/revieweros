@@ -56,8 +56,7 @@ const API_URL = "https://revieweros-api-933794864277.europe-west1.run.app";
 const WS_URL = "wss://revieweros-api-933794864277.europe-west1.run.app/ws/analyze";
 const AUTH_STORAGE_KEY = "revieweros_auth_session";
 const WORKSPACE_MONTHLY_QUOTA = 25;
-const REQUEST_ACCESS_MAILTO =
-  "mailto:hello@evalora.com.tr?subject=Evalora%20Demo%20Access%20Request&body=Hello%20Evalora%20team,%0A%0AI%20would%20like%20to%20request%20demo%20access%20for%20Evalora.%0A%0AOrganization:%0AUse%20case:%0AExpected%20monthly%20proposal%20volume:%0A";
+const REQUEST_ACCESS_ENDPOINT = `${API_URL}/request-access`;
 const SAMPLE_REPORT_URL =
   `${API_URL}/analyses/4e5fdf73-5a90-4f88-a265-3b3fab78ebad/report`;
 
@@ -1072,12 +1071,13 @@ function App() {
           View Sample Report
         </button>
 
-        <a
-          href={REQUEST_ACCESS_MAILTO}
+        <button
+          type="button"
+          onClick={requestAccessFlow}
           className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/20"
         >
           Request Access
-        </a>
+        </button>
       </div>
     </div>
 
@@ -1452,6 +1452,48 @@ function LandingLogin({
   );
 }
 
+async function requestAccessFlow() {
+  const email = window.prompt("Your email address:");
+
+  if (!email) return;
+
+  const organization = window.prompt("Organization / workspace name:");
+
+  if (!organization) return;
+
+  const useCase = window.prompt("Use case:", "Grant proposal review demo");
+
+  if (!useCase) return;
+
+  const expectedVolume = window.prompt("Expected monthly proposal volume:", "10");
+
+  try {
+    const response = await fetch(REQUEST_ACCESS_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        organization,
+        use_case: useCase,
+        expected_volume: expectedVolume || "",
+        source: "evalora-web",
+      }),
+    });
+
+    const json = await response.json();
+
+    if (!response.ok || !json.ok) {
+      throw new Error(json.detail || "Request failed.");
+    }
+
+    alert("Request received. Evalora will follow up with demo access.");
+  } catch (error: any) {
+    alert(error?.message || "Request access failed.");
+  }
+}
+
 function LandingSalesPreview() {
   const plans = [
     {
@@ -1496,12 +1538,13 @@ function LandingSalesPreview() {
             View Sample Report
           </button>
 
-          <a
-            href={REQUEST_ACCESS_MAILTO}
+          <button
+            type="button"
+            onClick={requestAccessFlow}
             className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/20"
           >
             Request Access
-          </a>
+          </button>
         </div>
       </div>
 

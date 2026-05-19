@@ -395,3 +395,45 @@ async def websocket_analyze(websocket: WebSocket):
             }
         )
         await websocket.close()
+
+
+# ---------------------------------------------------------------------
+# Public sales/demo access request endpoint
+# ---------------------------------------------------------------------
+from pydantic import BaseModel
+from services.request_access_store import create_access_request
+
+
+class AccessRequestPayload(BaseModel):
+    email: str
+    organization: str
+    use_case: str
+    expected_volume: str | None = None
+    source: str | None = "web"
+
+
+@app.post("/request-access")
+async def request_access(payload: AccessRequestPayload):
+    try:
+        item = create_access_request(
+            email=payload.email,
+            organization=payload.organization,
+            use_case=payload.use_case,
+            expected_volume=payload.expected_volume,
+            source=payload.source or "web",
+        )
+
+        return {
+            "ok": True,
+            "request_id": item["request_id"],
+            "status": item["status"],
+        }
+    except ValueError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=500, detail=f"Request access failed: {exc}")
+
