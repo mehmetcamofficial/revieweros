@@ -946,8 +946,8 @@ function LandingLogin({
   loading: boolean;
   error: string | null;
 }) {
-  const [userId, setUserId] = useState("hakki");
-  const [accessCode, setAccessCode] = useState("revieweros-demo-2026");
+  const [userId, setUserId] = useState("");
+  const [accessCode, setAccessCode] = useState("");
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -1004,7 +1004,7 @@ function LandingLogin({
               <input
                 value={userId}
                 onChange={(event) => setUserId(event.target.value)}
-                placeholder="hakki"
+                placeholder="your-workspace"
                 className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-blue-400"
               />
             </label>
@@ -1014,7 +1014,7 @@ function LandingLogin({
               <input
                 value={accessCode}
                 onChange={(event) => setAccessCode(event.target.value)}
-                placeholder="revieweros-demo-2026"
+                placeholder="Enter access code"
                 type="password"
                 className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-blue-400"
               />
@@ -1036,11 +1036,10 @@ function LandingLogin({
           </div>
 
           <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm leading-6 text-slate-400">
-            Demo default:
+            Use the workspace ID and access code provided for your ReviewerOS demo account.
             <br />
-            <span className="font-semibold text-slate-200">User ID:</span> hakki
-            <br />
-            <span className="font-semibold text-slate-200">Access Code:</span> revieweros-demo-2026
+            <span className="font-semibold text-slate-200">Example workspace:</span>{" "}
+            client-a
           </div>
         </section>
       </main>
