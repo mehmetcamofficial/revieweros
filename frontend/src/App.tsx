@@ -89,6 +89,7 @@ function App() {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [data, setData] = useState<ReviewResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<StreamEvent[]>([]);
@@ -778,7 +779,37 @@ function App() {
                 TXT files use live WebSocket streaming. PDF and DOCX use standard cloud analysis.
               </p>
 
-              <div className="mt-6 rounded-2xl border border-dashed border-slate-700 bg-slate-950 p-6">
+              <div
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={(event) => {
+                  event.preventDefault();
+                  setIsDragging(false);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setIsDragging(false);
+
+                  const droppedFile = event.dataTransfer.files?.[0];
+
+                  if (!droppedFile) return;
+
+                  if (!isSupportedFile(droppedFile.name)) {
+                    alert("Please upload a PDF, DOCX, TXT, or MD file.");
+                    return;
+                  }
+
+                  setFile(droppedFile);
+                  setSelectedHistoryJobId(null);
+                }}
+                className={`mt-6 rounded-3xl border border-dashed p-6 transition duration-300 ${
+                  isDragging
+                    ? "border-emerald-400 bg-emerald-500/10 shadow-2xl shadow-emerald-500/10"
+                    : "border-slate-700 bg-slate-950 hover:border-blue-500/50 hover:bg-slate-950/80"
+                }`}
+              >
                 <input
                   id="file-upload"
                   type="file"
@@ -790,25 +821,98 @@ function App() {
                   className="hidden"
                 />
 
-                <label
-                  htmlFor="file-upload"
-                  className="inline-flex w-fit cursor-pointer rounded-xl bg-white px-4 py-2 font-semibold text-slate-900 transition hover:bg-slate-200"
-                >
-                  Dosya Seç
-                </label>
+                <div className="flex flex-col gap-5">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-2xl ${
+                        file
+                          ? "border-blue-500/40 bg-blue-500/10 text-blue-300"
+                          : isDragging
+                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                            : "border-slate-700 bg-slate-900 text-slate-400"
+                      }`}
+                    >
+                      {file ? fileKindIcon(file.name) : "⇪"}
+                    </div>
 
-                <p className="mt-4 text-slate-400">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-lg font-black text-white">
+                        {file
+                          ? "File ready for review"
+                          : isDragging
+                            ? "Release to upload"
+                            : "Drop proposal here"}
+                      </p>
+
+                      <p className="mt-2 text-sm leading-6 text-slate-400">
+                        {file
+                          ? "Evalora will run scientific, commercial, risk, integrity, and chair review agents."
+                          : "Drag and drop a proposal file, or choose a document from your computer."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label
+                      htmlFor="file-upload"
+                      className="inline-flex w-fit cursor-pointer rounded-xl bg-white px-4 py-2 font-semibold text-slate-900 transition hover:bg-slate-200"
+                    >
+                      Choose file
+                    </label>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 text-xs font-semibold text-slate-400">
+                      PDF · DOCX · TXT · MD
+                    </div>
+                  </div>
+
                   {file ? (
-                    <>
-                      Selected:{" "}
-                      <span className="font-semibold text-white">
-                        {shortFileName(file.name)}
-                      </span>
-                    </>
+                    <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">
+                            Selected file
+                          </p>
+                          <p className="mt-2 line-clamp-2 font-bold text-white">
+                            {shortFileName(file.name, 84)}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {fileKindLabel(file.name)} · {formatFileSize(file.size)}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFile(null);
+                            setSelectedHistoryJobId(null);
+                          }}
+                          className="shrink-0 rounded-xl border border-slate-700 px-3 py-2 text-xs font-bold text-slate-300 transition hover:bg-slate-800"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
                   ) : (
-                    "Henüz dosya seçilmedi"
+                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm leading-6 text-slate-500">
+                      Recommended: upload a full proposal, application, pitch deck text export, or grant draft.
+                    </div>
                   )}
-                </p>
+
+                  {loading && (
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="text-sm font-semibold text-emerald-300">
+                          Preparing multi-agent review...
+                        </p>
+                        <span className="text-xs text-emerald-200">Live orchestration</span>
+                      </div>
+
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
+                        <div className="h-2 w-2/3 animate-pulse rounded-full bg-emerald-400" />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <button
@@ -1898,6 +2002,54 @@ function reviewerAccentStyles(accent: "blue" | "emerald" | "red" | "purple") {
   };
 
   return styles[accent];
+}
+
+function isSupportedFile(fileName: string) {
+  const normalized = fileName.toLowerCase();
+
+  return (
+    normalized.endsWith(".pdf") ||
+    normalized.endsWith(".docx") ||
+    normalized.endsWith(".txt") ||
+    normalized.endsWith(".md")
+  );
+}
+
+function fileKindIcon(fileName: string) {
+  const normalized = fileName.toLowerCase();
+
+  if (normalized.endsWith(".pdf")) return "PDF";
+  if (normalized.endsWith(".docx")) return "DOC";
+  if (normalized.endsWith(".txt")) return "TXT";
+  if (normalized.endsWith(".md")) return "MD";
+
+  return "FILE";
+}
+
+function fileKindLabel(fileName: string) {
+  const normalized = fileName.toLowerCase();
+
+  if (normalized.endsWith(".pdf")) return "PDF document";
+  if (normalized.endsWith(".docx")) return "Word document";
+  if (normalized.endsWith(".txt")) return "Text document";
+  if (normalized.endsWith(".md")) return "Markdown document";
+
+  return "Document";
+}
+
+function formatFileSize(bytes: number) {
+  if (!bytes || Number.isNaN(bytes)) return "Unknown size";
+
+  const units = ["B", "KB", "MB", "GB"];
+  let size = bytes;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size = size / 1024;
+    unitIndex += 1;
+  }
+
+  return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
 function shortFileName(fileName: string, maxLength = 72) {
