@@ -250,6 +250,36 @@ function App() {
     }
   }
 
+  function resetWorkspaceForNewAnalysis() {
+    setFile(null);
+    setData(null);
+    setEvents([]);
+    setTelemetry(null);
+    setSelectedHistoryJobId(null);
+
+    if (
+      window.location.pathname.startsWith("/report/") ||
+      window.location.search.includes("report=") ||
+      window.location.hash.includes("report=")
+    ) {
+      window.history.pushState({}, "", "/");
+    }
+
+    showToast("Ready for a new analysis ✓");
+  }
+
+  function clearRecentAnalysesView() {
+    const confirmed = window.confirm(
+      "Clear the recent analyses list from this view? Saved reports will remain in Firestore."
+    );
+
+    if (!confirmed) return;
+
+    setRecentAnalyses([]);
+    setSelectedHistoryJobId(null);
+    showToast("Recent analyses cleared from view ✓");
+  }
+
   function handleLogout() {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     setAuthSession(null);
@@ -868,6 +898,20 @@ function App() {
             <div className="rounded-full border border-blue-500/30 bg-blue-500/10 px-5 py-2 text-sm font-semibold text-blue-200">
               Workspace: {authSession.userId}
             </div>
+
+            <button
+              onClick={resetWorkspaceForNewAnalysis}
+              className="rounded-full border border-blue-500/40 bg-blue-500/10 px-5 py-2 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/20"
+            >
+              New Analysis
+            </button>
+
+            <button
+              onClick={clearRecentAnalysesView}
+              className="rounded-full border border-slate-700 px-5 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-800"
+            >
+              Clear Recent
+            </button>
 
             <button
               onClick={handleLogout}
