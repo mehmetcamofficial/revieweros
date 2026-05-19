@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
 type ReviewResult = {
@@ -65,10 +65,22 @@ function App() {
   const [telemetry, setTelemetry] = useState<any>(null);
   const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [selectedHistoryJobId, setSelectedHistoryJobId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const finalDecisionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     loadRecentAnalyses();
   }, []);
+
+  function showToast(message: string) {
+    setToast(message);
+
+    window.setTimeout(() => {
+      setToast(null);
+    }, 2200);
+  }
 
   async function loadRecentAnalyses() {
     try {
@@ -93,6 +105,7 @@ function App() {
     setData(null);
     setEvents([]);
     setTelemetry(null);
+    setSelectedHistoryJobId(null);
 
     if (file.name.toLowerCase().endsWith(".txt")) {
       await analyzeWithWebSocket(file);
@@ -141,6 +154,15 @@ function App() {
 
         await saveAnalysisToHistory(completedData);
         await loadRecentAnalyses();
+
+        showToast("Analysis completed and saved ✓");
+
+        window.setTimeout(() => {
+          finalDecisionRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }, 100);
       }
 
       if (event.type === "error") {
@@ -236,14 +258,16 @@ function App() {
         telemetry: normalized.telemetry || fallbackTelemetry,
       };
 
-      setData({
+      const completedData = {
         job_id: json.job_id || crypto.randomUUID(),
         file_name: json.file_name || selectedFile.name,
         report_path: json.report_path,
         result: normalizedWithTelemetry,
-      });
+      };
 
+      setData(completedData);
       setTelemetry(normalized.telemetry || fallbackTelemetry);
+      setSelectedHistoryJobId(completedData.job_id);
 
       setEvents([
         {
@@ -285,6 +309,15 @@ function App() {
       ]);
 
       await loadRecentAnalyses();
+
+      showToast("Analysis completed and saved ✓");
+
+      window.setTimeout(() => {
+        finalDecisionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
     } catch (error) {
       console.error(error);
       alert("Analysis failed.");
@@ -342,6 +375,8 @@ function App() {
 
       await downloadBlobResponse(response, `${data.job_id}-revieweros-report.pdf`);
       await loadRecentAnalyses();
+
+      showToast("PDF report downloaded ✓");
     } catch (error) {
       console.error(error);
       alert("PDF export failed.");
@@ -357,6 +392,9 @@ function App() {
       }
 
       await downloadBlobResponse(response, `${jobId}-revieweros-report.pdf`);
+
+      setSelectedHistoryJobId(jobId);
+      showToast("Saved PDF downloaded ✓");
     } catch (error) {
       console.error(error);
       alert("Saved PDF export failed.");
@@ -383,6 +421,7 @@ function App() {
       });
 
       setTelemetry(normalized.telemetry || null);
+      setSelectedHistoryJobId(jobId);
 
       setEvents([
         {
@@ -417,7 +456,14 @@ function App() {
         },
       ]);
 
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      showToast("Loaded from history ✓");
+
+      window.setTimeout(() => {
+        finalDecisionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
     } catch (error) {
       console.error(error);
       alert("Failed to load saved analysis.");
@@ -453,17 +499,23 @@ function App() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-slate-950 text-white">
+      {toast && (
+        <div className="fixed right-5 top-5 z-50 rounded-2xl border border-emerald-500/40 bg-emerald-500/15 px-5 py-3 text-sm font-semibold text-emerald-200 shadow-2xl backdrop-blur">
+          {toast}
+        </div>
+      )}
+
       <header className="border-b border-slate-800/80 bg-slate-950/95 px-6 py-6 backdrop-blur md:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div>
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 overflow-hidden md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
             <h1 className="text-4xl font-black tracking-tight">ReviewerOS</h1>
             <p className="mt-2 max-w-3xl text-slate-400">
               Autonomous AI reviewer panel for grants, accelerators, and startup applications.
             </p>
           </div>
 
-          <div className="w-fit rounded-full border border-emerald-500/30 bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-300">
-            Cloud Run Streaming Backend Connected
+          <div className="max-w-full shrink-0 truncate rounded-full border border-emerald-500/30 bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-300">
+            Cloud Run Backend Connected
           </div>
         </div>
       </header>
@@ -485,7 +537,10 @@ function App() {
                   id="file-upload"
                   type="file"
                   accept=".txt,.pdf,.docx,.md"
-                  onChange={(event) => setFile(event.target.files?.[0] || null)}
+                  onChange={(event) => {
+                    setFile(event.target.files?.[0] || null);
+                    setSelectedHistoryJobId(null);
+                  }}
                   className="hidden"
                 />
 
@@ -524,13 +579,17 @@ function App() {
             <RecentAnalysesPanel
               items={recentAnalyses}
               loading={historyLoading}
+              selectedJobId={selectedHistoryJobId}
               onRefresh={loadRecentAnalyses}
               onLoad={loadSavedAnalysis}
               onDownload={downloadSavedReport}
             />
           </aside>
 
-          <section className="min-w-0 rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
+          <section
+            ref={finalDecisionRef}
+            className="min-w-0 rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl scroll-mt-8"
+          >
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <h2 className="text-2xl font-bold">Final Decision</h2>
 
@@ -611,12 +670,14 @@ function App() {
 function RecentAnalysesPanel({
   items,
   loading,
+  selectedJobId,
   onRefresh,
   onLoad,
   onDownload,
 }: {
   items: RecentAnalysis[];
   loading: boolean;
+  selectedJobId: string | null;
   onRefresh: () => void;
   onLoad: (jobId: string) => void;
   onDownload: (jobId: string) => void;
@@ -644,54 +705,78 @@ function RecentAnalysesPanel({
           </div>
         )}
 
-        {items.map((item) => (
-          <div
-            key={item.job_id}
-            className="rounded-2xl border border-slate-800 bg-slate-950 p-4"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="line-clamp-2 text-sm font-semibold text-white">
-                  {shortFileName(item.file_name || "Untitled analysis", 58)}
-                </p>
+        {items.map((item) => {
+          const selected = selectedJobId === item.job_id;
 
-                <p className="mt-1 text-xs text-slate-500">
-                  {formatDate(item.created_at)}
-                </p>
+          return (
+            <div
+              key={item.job_id}
+              className={`rounded-2xl border bg-slate-950 p-4 transition ${
+                selected
+                  ? "border-emerald-400/70 shadow-lg shadow-emerald-500/10"
+                  : "border-slate-800 hover:border-slate-700"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="line-clamp-2 text-sm font-semibold text-white">
+                    {shortFileName(item.file_name || "Untitled analysis", 58)}
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    {formatDate(item.created_at)}
+                  </p>
+                </div>
+
+                <div
+                  className={`shrink-0 rounded-xl border px-3 py-1 text-sm font-black ${
+                    selected
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                      : "border-blue-500/30 bg-blue-500/10 text-blue-300"
+                  }`}
+                >
+                  {item.final_score ?? "-"}
+                </div>
               </div>
 
-              <div className="shrink-0 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-sm font-black text-blue-300">
-                {item.final_score ?? "-"}
+              {selected && (
+                <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300">
+                  Loaded from history ✓
+                </div>
+              )}
+
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <MiniStat label="Decision" value={item.recommendation || "-"} />
+                <MiniStat label="Risk" value={item.risk_level || "-"} />
+                <MiniStat label="Tokens" value={formatTelemetryValue(item.tokens)} />
+                <MiniStat
+                  label="Latency"
+                  value={item.latency_seconds ? `${item.latency_seconds}s` : "-"}
+                />
+              </div>
+
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={() => onLoad(item.job_id)}
+                  className={`flex-1 rounded-xl px-3 py-2 text-xs font-bold transition ${
+                    selected
+                      ? "bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                      : "bg-white text-slate-950 hover:bg-slate-200"
+                  }`}
+                >
+                  {selected ? "Loaded" : "Load"}
+                </button>
+
+                <button
+                  onClick={() => onDownload(item.job_id)}
+                  className="flex-1 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-300 transition hover:bg-blue-500/20"
+                >
+                  PDF
+                </button>
               </div>
             </div>
-
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <MiniStat label="Decision" value={item.recommendation || "-"} />
-              <MiniStat label="Risk" value={item.risk_level || "-"} />
-              <MiniStat label="Tokens" value={formatTelemetryValue(item.tokens)} />
-              <MiniStat
-                label="Latency"
-                value={item.latency_seconds ? `${item.latency_seconds}s` : "-"}
-              />
-            </div>
-
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={() => onLoad(item.job_id)}
-                className="flex-1 rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-950 transition hover:bg-slate-200"
-              >
-                Load
-              </button>
-
-              <button
-                onClick={() => onDownload(item.job_id)}
-                className="flex-1 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-300 transition hover:bg-blue-500/20"
-              >
-                PDF
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
