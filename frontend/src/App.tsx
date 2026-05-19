@@ -875,7 +875,43 @@ function App() {
 
             {!data && !loading && (
               <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-950 p-10 text-center text-slate-500">
-                Upload an application or load a saved analysis to generate a structured AI reviewer report.
+                
+<div className="flex min-h-[260px] flex-col items-center justify-center rounded-3xl border border-slate-800 bg-[#050816] px-8 text-center">
+  <div className="max-w-2xl">
+    <div className="mb-4 inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1 text-sm font-medium text-emerald-300">
+      Welcome to Evalora
+    </div>
+
+    <h2 className="text-3xl font-black tracking-tight text-white">
+      AI-powered multi-agent proposal review workspace
+    </h2>
+
+    <p className="mt-4 text-base leading-7 text-slate-400">
+      Upload a proposal PDF to generate structured reviewer intelligence,
+      scientific and commercial assessment, integrity checks, and a
+      shareable PDF report.
+    </p>
+
+    <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+      <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
+        Scientific merit analysis
+      </div>
+
+      <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
+        Commercial readiness scoring
+      </div>
+
+      <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
+        Risk & integrity review
+      </div>
+
+      <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
+        Shareable PDF reports
+      </div>
+    </div>
+  </div>
+</div>
+
               </div>
             )}
 
