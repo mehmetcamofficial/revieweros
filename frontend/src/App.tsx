@@ -55,6 +55,11 @@ type RecentAnalysis = {
 const API_URL = "https://revieweros-api-933794864277.europe-west1.run.app";
 const WS_URL = "wss://revieweros-api-933794864277.europe-west1.run.app/ws/analyze";
 const AUTH_STORAGE_KEY = "revieweros_auth_session";
+const WORKSPACE_MONTHLY_QUOTA = 25;
+const REQUEST_ACCESS_MAILTO =
+  "mailto:hello@evalora.com.tr?subject=Evalora%20Demo%20Access%20Request&body=Hello%20Evalora%20team,%0A%0AI%20would%20like%20to%20request%20demo%20access%20for%20Evalora.%0A%0AOrganization:%0AUse%20case:%0AExpected%20monthly%20proposal%20volume:%0A";
+const SAMPLE_REPORT_URL =
+  `${API_URL}/analyses/4e5fdf73-5a90-4f88-a265-3b3fab78ebad/report`;
 
 const reviewerSteps = [
   "Scientific Reviewer",
@@ -956,6 +961,11 @@ function App() {
               {(loading || data || events.length > 0) && <AgentTimeline events={events} />}
             </div>
 
+            <WorkspaceQuotaCard
+              used={recentAnalyses.length}
+              limit={WORKSPACE_MONTHLY_QUOTA}
+            />
+
             <RecentAnalysesPanel
               items={recentAnalyses}
               loading={historyLoading}
@@ -1010,37 +1020,145 @@ function App() {
             {!data && !loading && (
               <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-950 p-10 text-center text-slate-500">
                 
-<div className="flex min-h-[260px] flex-col items-center justify-center rounded-3xl border border-slate-800 bg-[#050816] px-8 text-center">
-  <div className="max-w-2xl">
-    <div className="mb-4 inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1 text-sm font-medium text-emerald-300">
-      Welcome to Evalora
+<div className="rounded-3xl border border-slate-800 bg-[#050816] p-8">
+  <div className="grid gap-8 2xl:grid-cols-[1.1fr_0.9fr]">
+    <div>
+      <div className="mb-4 inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1 text-sm font-medium text-emerald-300">
+        Welcome to Evalora
+      </div>
+
+      <h2 className="text-3xl font-black tracking-tight text-white">
+        Start your first AI reviewer panel
+      </h2>
+
+      <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400">
+        Upload a proposal PDF to generate structured reviewer intelligence,
+        scientific and commercial assessment, integrity checks, chair synthesis,
+        and a shareable PDF report.
+      </p>
+
+      <div className="mt-8 grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+          <p className="text-2xl font-black text-blue-300">1</p>
+          <p className="mt-2 font-bold text-white">Upload</p>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            Add a PDF, DOCX, TXT, or Markdown proposal.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+          <p className="text-2xl font-black text-emerald-300">2</p>
+          <p className="mt-2 font-bold text-white">Review</p>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            Five specialist agents evaluate the application.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+          <p className="text-2xl font-black text-cyan-300">3</p>
+          <p className="mt-2 font-bold text-white">Share</p>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            Export a structured PDF report or copy a PDF link.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-8 flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={() => window.open(SAMPLE_REPORT_URL, "_blank", "noopener,noreferrer")}
+          className="rounded-xl border border-blue-500/40 bg-blue-500/10 px-5 py-3 text-sm font-bold text-blue-300 transition hover:bg-blue-500/20"
+        >
+          View Sample Report
+        </button>
+
+        <a
+          href={REQUEST_ACCESS_MAILTO}
+          className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/20"
+        >
+          Request Access
+        </a>
+      </div>
     </div>
 
-    <h2 className="text-3xl font-black tracking-tight text-white">
-      AI-powered multi-agent proposal review workspace
-    </h2>
+    <div className="space-y-4">
+      <div className="rounded-3xl border border-slate-800 bg-slate-950 p-5">
+        <p className="text-sm font-bold uppercase tracking-[0.24em] text-cyan-300">
+          What Evalora checks
+        </p>
 
-    <p className="mt-4 text-base leading-7 text-slate-400">
-      Upload a proposal PDF to generate structured reviewer intelligence,
-      scientific and commercial assessment, integrity checks, and a
-      shareable PDF report.
-    </p>
+        <div className="mt-5 space-y-3">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+            <p className="font-bold text-white">Scientific merit</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Methodology, novelty, validation, feasibility.
+            </p>
+          </div>
 
-    <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-      <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
-        Scientific merit analysis
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+            <p className="font-bold text-white">Commercial readiness</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Market, business model, GTM, scalability.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+            <p className="font-bold text-white">Risk and integrity</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Operational risk, unsupported claims, AI-likelihood.
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
-        Commercial readiness scoring
+      <div className="rounded-3xl border border-slate-800 bg-slate-950 p-5">
+        <p className="text-sm font-bold uppercase tracking-[0.24em] text-blue-300">
+          Evaluation templates
+        </p>
+
+        <div className="mt-5 grid gap-3">
+          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
+            <p className="font-bold text-white">Grant Proposal Review</p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Scientific excellence, impact, feasibility, work plan, and reviewer consensus.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+            <p className="font-bold text-white">Accelerator Application</p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Market, team, traction, business model, GTM readiness, and execution risk.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
+            <p className="font-bold text-white">Investment Screening</p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Defensibility, scalability, risk profile, evidence quality, and funding readiness.
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
-        Risk & integrity review
-      </div>
+      <div className="rounded-3xl border border-slate-800 bg-slate-950 p-5">
+        <p className="text-sm font-bold uppercase tracking-[0.24em] text-emerald-300">
+          Coming next
+        </p>
 
-      <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
-        Shareable PDF reports
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-400">
+            Custom rubrics
+          </span>
+          <span className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-400">
+            Team review
+          </span>
+          <span className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-400">
+            API access
+          </span>
+          <span className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-400">
+            White-label portals
+          </span>
+        </div>
       </div>
     </div>
   </div>
@@ -1276,6 +1394,7 @@ function LandingLogin({
               <LandingFeature title="Integrity Reviewer" text="Unsupported claims, AI-likelihood, and data governance." />
             </div>
           </div>
+          <LandingSalesPreview />
         </section>
 
         <section className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl">
@@ -1329,6 +1448,141 @@ function LandingLogin({
           </div>
         </section>
       </main>
+    </div>
+  );
+}
+
+function LandingSalesPreview() {
+  const plans = [
+    {
+      name: "Starter",
+      price: "$29",
+      detail: "For individual founders and grant writers.",
+    },
+    {
+      name: "Team",
+      price: "$99",
+      detail: "For labs, accelerators, and proposal teams.",
+    },
+    {
+      name: "Institution",
+      price: "Custom",
+      detail: "White-label portals, quotas, and API access.",
+    },
+  ];
+
+  return (
+    <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.24em] text-cyan-300">
+            Sales demo ready
+          </p>
+          <h3 className="mt-2 text-2xl font-black text-white">
+            Evaluate proposals before the first upload.
+          </h3>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+            Use sample reports, pricing context, and access requests to turn the
+            demo into a lightweight SaaS acquisition flow.
+          </p>
+        </div>
+
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => window.open(SAMPLE_REPORT_URL, "_blank", "noopener,noreferrer")}
+            className="rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300 transition hover:bg-blue-500/20"
+          >
+            View Sample Report
+          </button>
+
+          <a
+            href={REQUEST_ACCESS_MAILTO}
+            className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/20"
+          >
+            Request Access
+          </a>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        {plans.map((plan) => (
+          <div
+            key={plan.name}
+            className="rounded-2xl border border-slate-800 bg-slate-950 p-4"
+          >
+            <p className="text-sm font-bold text-white">{plan.name}</p>
+            <p className="mt-2 text-2xl font-black text-white">{plan.price}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{plan.detail}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function WorkspaceQuotaCard({
+  used,
+  limit,
+}: {
+  used: number;
+  limit: number;
+}) {
+  const safeLimit = Math.max(limit, 1);
+  const percentage = Math.min(100, Math.round((used / safeLimit) * 100));
+  const remaining = Math.max(0, limit - used);
+
+  return (
+    <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-bold text-white">Workspace Quota</h3>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Demo usage visibility for sales and client workspaces.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-black text-emerald-300">
+          Demo
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950 p-4">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-3xl font-black text-white">
+              {used}
+              <span className="text-base text-slate-500"> / {limit}</span>
+            </p>
+            <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-slate-500">
+              analyses used
+            </p>
+          </div>
+
+          <p className="text-sm font-bold text-slate-300">
+            {remaining} remaining
+          </p>
+        </div>
+
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
+          <div
+            className="h-2 rounded-full bg-emerald-400 transition-all"
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+        <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+          <p className="font-bold text-slate-300">Plan</p>
+          <p className="mt-1 text-slate-500">Demo Workspace</p>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+          <p className="font-bold text-slate-300">Reset</p>
+          <p className="mt-1 text-slate-500">Monthly</p>
+        </div>
+      </div>
     </div>
   );
 }
