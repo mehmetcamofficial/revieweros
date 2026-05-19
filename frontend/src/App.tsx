@@ -352,32 +352,32 @@ function App() {
       {
         type: "session_started",
         agent_label: "ReviewerOS",
-        message: "ReviewerOS standard document analysis initialized.",
+        message: "Evalora orchestration initialized. Preparing specialist reviewer agents.",
       },
       {
         type: "agent_started",
         agent_label: "Scientific Reviewer",
-        message: "Scientific Reviewer analyzing extracted document text.",
+        message: "Scientific Reviewer analyzing methodology, novelty, validation, and technical feasibility.",
       },
       {
         type: "agent_started",
         agent_label: "Commercial Reviewer",
-        message: "Commercial Reviewer evaluating market and commercialization readiness.",
+        message: "Commercial Reviewer evaluating market potential, business model, GTM readiness, and scalability.",
       },
       {
         type: "agent_started",
         agent_label: "Risk Reviewer",
-        message: "Risk Reviewer validating operational, compliance, and execution risks.",
+        message: "Risk Reviewer assessing operational, regulatory, ethical, and execution risks.",
       },
       {
         type: "agent_started",
         agent_label: "Integrity Reviewer",
-        message: "Integrity Reviewer scanning ethical, evidence, and AI-likelihood signals.",
+        message: "Integrity Reviewer checking unsupported claims, evidence quality, and AI-generated likelihood.",
       },
       {
         type: "chair_started",
         agent_label: "Chair Agent",
-        message: "Chair Agent preparing synthesis.",
+        message: "Chair Agent synthesizing reviewer consensus and final recommendation.",
       },
     ]);
 
@@ -446,37 +446,37 @@ function App() {
         {
           type: "session_started",
           agent_label: "ReviewerOS",
-          message: "ReviewerOS standard document analysis initialized.",
+          message: "Evalora orchestration initialized. Preparing specialist reviewer agents.",
         },
         {
           type: "agent_completed",
           agent_label: "Scientific Reviewer",
-          message: "Scientific Reviewer completed document analysis.",
+          message: "Scientific Reviewer completed methodology and feasibility assessment.",
         },
         {
           type: "agent_completed",
           agent_label: "Commercial Reviewer",
-          message: "Commercial Reviewer completed commercialization review.",
+          message: "Commercial Reviewer completed GTM and commercial viability assessment.",
         },
         {
           type: "agent_completed",
           agent_label: "Risk Reviewer",
-          message: "Risk Reviewer completed risk assessment.",
+          message: "Risk Reviewer completed operational and compliance risk assessment.",
         },
         {
           type: "agent_completed",
           agent_label: "Integrity Reviewer",
-          message: "Integrity Reviewer completed integrity review.",
+          message: "Integrity Reviewer completed evidence and integrity assessment.",
         },
         {
           type: "chair_completed",
           agent_label: "Chair Agent",
-          message: "Chair Agent finalized reviewer consensus.",
+          message: "Chair Agent finalized consensus, score, and recommendation.",
         },
         {
           type: "session_completed",
           agent_label: "ReviewerOS",
-          message: "ReviewerOS standard document analysis completed.",
+          message: "Evalora multi-agent review completed.",
           telemetry: fallbackTelemetry,
         },
       ]);
@@ -627,7 +627,7 @@ function App() {
         {
           type: "session_started",
           agent_label: "ReviewerOS",
-          message: "Saved analysis loaded from history.",
+          message: "Saved Evalora analysis loaded from workspace history.",
         },
         {
           type: "agent_completed",
@@ -652,7 +652,7 @@ function App() {
         {
           type: "chair_completed",
           agent_label: "Chair Agent",
-          message: "Chair synthesis loaded.",
+          message: "Chair consensus synthesis loaded.",
         },
       ]);
 
@@ -741,15 +741,15 @@ function App() {
       <header className="border-b border-slate-800/80 bg-slate-950/95 px-6 py-6 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-5 overflow-hidden md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
-            <h1 className="text-4xl font-black tracking-tight">ReviewerOS</h1>
+            <h1 className="text-4xl font-black tracking-tight">Evalora ReviewerOS</h1>
             <p className="mt-2 max-w-3xl text-slate-400">
-              Autonomous AI reviewer panel for grants, accelerators, and startup applications.
+              AI-powered multi-agent proposal review workspace for grants, accelerators, and innovation funding.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             <div className="max-w-full shrink-0 truncate rounded-full border border-emerald-500/30 bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-300">
-              Cloud Run Backend Connected
+              Evalora Backend Connected
             </div>
 
             <div className="rounded-full border border-blue-500/30 bg-blue-500/10 px-5 py-2 text-sm font-semibold text-blue-200">
@@ -816,7 +816,7 @@ function App() {
                 disabled={!file || loading}
                 className="mt-6 w-full rounded-2xl bg-white px-5 py-3 text-lg font-bold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {loading ? "Analyzing with ReviewerOS..." : "Analyze with ReviewerOS"}
+                {loading ? "Analyzing with Evalora..." : "Analyze with Evalora"}
               </button>
 
               {(loading || data || events.length > 0) && <AgentTimeline events={events} />}
@@ -990,9 +990,9 @@ function LandingLogin({
       <header className="border-b border-slate-800/80 px-6 py-6 md:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div>
-            <h1 className="text-4xl font-black tracking-tight">ReviewerOS</h1>
+            <h1 className="text-4xl font-black tracking-tight">Evalora ReviewerOS</h1>
             <p className="mt-2 text-slate-400">
-              Autonomous AI reviewer panel for grants, accelerators, and startup applications.
+              AI-powered multi-agent proposal review workspace for grants, accelerators, and innovation funding.
             </p>
           </div>
 
@@ -1067,7 +1067,7 @@ function LandingLogin({
               disabled={loading}
               className="w-full rounded-2xl bg-white px-5 py-3 text-lg font-black text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Checking access..." : "Enter ReviewerOS"}
+              {loading ? "Checking access..." : "Enter Evalora"}
             </button>
           </div>
 
@@ -1127,8 +1127,14 @@ function RecentAnalysesPanel({
 
       <div className="reviewer-scroll mt-4 max-h-[430px] space-y-3 overflow-y-auto pr-1">
         {items.length === 0 && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm leading-6 text-slate-500">
-            No saved analyses yet. Run a new analysis to populate history.
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-5 text-sm leading-6 text-slate-400">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-500/30 bg-blue-500/10 text-blue-300">
+              ✦
+            </div>
+            <p className="font-bold text-slate-200">No analyses yet</p>
+            <p className="mt-1 text-slate-500">
+              Upload your first proposal to generate a multi-agent reviewer panel report.
+            </p>
           </div>
         )}
 
@@ -1458,10 +1464,24 @@ function ReviewerAgreement({
 }
 
 function MetricCard({ title, value }: { title: string; value: any }) {
+  const isAwaiting =
+    value === "-" ||
+    value === undefined ||
+    value === null ||
+    value === "";
+
   return (
     <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-950 p-5">
       <p className="text-sm text-slate-400">{title}</p>
-      <p className="mt-3 break-words text-2xl font-black">{String(value)}</p>
+
+      {isAwaiting ? (
+        <div className="mt-3">
+          <p className="text-base font-bold text-slate-400">Awaiting analysis</p>
+          <div className="mt-3 h-2 w-24 animate-pulse rounded-full bg-slate-800" />
+        </div>
+      ) : (
+        <p className="mt-3 break-words text-2xl font-black">{String(value)}</p>
+      )}
     </div>
   );
 }
@@ -1688,7 +1708,7 @@ function LiveEventPanel({ events }: { events: StreamEvent[] }) {
       <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-950 p-5">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="font-semibold text-cyan-300">ReviewerOS Orchestration Console</p>
+            <p className="font-semibold text-cyan-300">Evalora Orchestration Console</p>
             <p className="text-xs text-slate-500">Real-time multi-agent execution trace</p>
           </div>
 
@@ -1798,14 +1818,14 @@ function isAgentActive(events: StreamEvent[], agentLabel: string) {
 function humanizeEvent(event: StreamEvent) {
   if (event.message) return event.message;
 
-  if (event.type === "session_started") return "ReviewerOS orchestration session initialized.";
+  if (event.type === "session_started") return "Evalora orchestration session initialized.";
   if (event.type === "chair_started") return "Chair Agent synthesizing reviewer consensus.";
   if (event.type === "agent_completed") return `${event.agent_label} completed review successfully.`;
   if (event.type === "agent_failed") {
     return `${event.agent_label} failed, but ReviewerOS generated a safe fallback output and continued orchestration.`;
   }
   if (event.type === "chair_completed") return "Chair Agent finalized executive recommendation.";
-  if (event.type === "session_completed") return "ReviewerOS orchestration completed.";
+  if (event.type === "session_completed") return "Evalora orchestration completed.";
   if (event.type === "error") return event.error || "Analysis failed.";
 
   if (event.type === "agent_started") {
