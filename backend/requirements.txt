@@ -7,3 +7,6 @@ pymupdf
 python-docx
 reportlab
 python-dotenv
+pymupdf
+python-docx
+google-cloud-firestore

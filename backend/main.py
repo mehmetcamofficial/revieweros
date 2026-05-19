@@ -1,4 +1,6 @@
+import json
 import os
+import time
 import uuid
 
 from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect
@@ -10,6 +12,12 @@ from services.gemini import run_reviewer_panel
 from services.report_generator import generate_markdown_report
 from services.pdf_report import generate_pdf_report
 from services.streaming import run_streaming_review
+from services.firestore_store import (
+    get_analysis,
+    list_analyses,
+    save_analysis,
+    upsert_report_path,
+)
 
 
 app = FastAPI(
@@ -33,6 +41,45 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(REPORT_DIR, exist_ok=True)
 
 
+def estimate_tokens_from_result(result: dict) -> int:
+    text = json.dumps(result or {}, ensure_ascii=False)
+    estimated = round(len(text) / 4)
+
+    return max(1000, estimated)
+
+
+def estimate_flash_lite_cost(tokens: int) -> float:
+    return round((tokens / 1_000_000) * 0.35, 6)
+
+
+def ensure_telemetry(result: dict, latency_seconds=None) -> dict:
+    if not isinstance(result, dict):
+        return result
+
+    existing_telemetry = result.get("telemetry") or {}
+
+    tokens = existing_telemetry.get("tokens")
+    if tokens is None or tokens == "" or tokens == "-":
+        tokens = estimate_tokens_from_result(result)
+
+    cost_usd = existing_telemetry.get("cost_usd")
+    if cost_usd is None or cost_usd == "" or cost_usd == "-":
+        cost_usd = estimate_flash_lite_cost(int(tokens))
+
+    final_latency = existing_telemetry.get("latency_seconds")
+    if final_latency is None or final_latency == "" or final_latency == "-":
+        final_latency = latency_seconds
+
+    result["telemetry"] = {
+        "model": existing_telemetry.get("model") or "gemini-2.5-flash-lite",
+        "tokens": tokens,
+        "cost_usd": cost_usd,
+        "latency_seconds": final_latency,
+    }
+
+    return result
+
+
 @app.get("/")
 def root():
     return {
@@ -48,6 +95,89 @@ def health():
         "status": "ok",
         "service": "ReviewerOS API",
     }
+
+
+@app.get("/analyses")
+def get_recent_analyses(limit: int = 20):
+    safe_limit = max(1, min(limit, 50))
+
+    return {
+        "items": list_analyses(limit=safe_limit),
+    }
+
+
+@app.get("/analyses/{job_id}")
+def get_saved_analysis(job_id: str):
+    analysis = get_analysis(job_id)
+
+    if not analysis:
+        return {
+            "error": "Analysis not found.",
+        }
+
+    return analysis
+
+
+@app.post("/analyses")
+def create_saved_analysis(payload: dict):
+    job_id = payload.get("job_id", str(uuid.uuid4()))
+    file_name = payload.get("file_name", "application")
+    result = payload.get("result")
+    report_path = payload.get("report_path")
+
+    if not result:
+        return {
+            "error": "Missing result payload.",
+        }
+
+    result = ensure_telemetry(result)
+
+    saved = save_analysis(
+        job_id=job_id,
+        file_name=file_name,
+        result=result,
+        report_path=report_path,
+    )
+
+    return {
+        "job_id": job_id,
+        "saved": saved,
+    }
+
+
+@app.get("/analyses/{job_id}/report")
+def download_saved_analysis_report(job_id: str):
+    analysis = get_analysis(job_id)
+
+    if not analysis:
+        return {
+            "error": "Analysis not found.",
+        }
+
+    result = analysis.get("result")
+    file_name = analysis.get("file_name", "application")
+
+    if not result:
+        return {
+            "error": "Saved analysis has no result payload.",
+        }
+
+    result = ensure_telemetry(result)
+
+    pdf_path = generate_pdf_report(
+        job_id=job_id,
+        result=result,
+        output_dir=REPORT_DIR,
+        file_name=file_name,
+    )
+
+    upsert_report_path(job_id=job_id, report_path=pdf_path)
+
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=f"{job_id}-revieweros-executive-report.pdf",
+    )
 
 
 @app.post("/analyze")
@@ -83,11 +213,17 @@ async def analyze_application(file: UploadFile = File(...)):
         }
 
     try:
+        start_time = time.time()
+
         result = run_reviewer_panel(
             application_text=extracted_text,
             file_name=file.filename,
             job_id=job_id,
         )
+
+        latency_seconds = round(time.time() - start_time, 2)
+        result = ensure_telemetry(result, latency_seconds=latency_seconds)
+
     except Exception as error:
         return {
             "job_id": job_id,
@@ -104,6 +240,13 @@ async def analyze_application(file: UploadFile = File(...)):
     except Exception as error:
         report_path = None
         result["report_error"] = str(error)
+
+    save_analysis(
+        job_id=job_id,
+        file_name=file.filename,
+        result=result,
+        report_path=report_path,
+    )
 
     return {
         "job_id": job_id,
@@ -124,11 +267,22 @@ async def create_pdf_report(payload: dict):
             "error": "Missing result payload.",
         }
 
+    result = ensure_telemetry(result)
+
     pdf_path = generate_pdf_report(
         job_id=job_id,
         result=result,
         output_dir=REPORT_DIR,
         file_name=file_name,
+    )
+
+    upsert_report_path(job_id=job_id, report_path=pdf_path)
+
+    save_analysis(
+        job_id=job_id,
+        file_name=file_name,
+        result=result,
+        report_path=pdf_path,
     )
 
     return FileResponse(

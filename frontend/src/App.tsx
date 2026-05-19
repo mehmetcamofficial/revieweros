@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
 type ReviewResult = {
@@ -31,6 +31,21 @@ type StreamEvent = {
   error?: string;
 };
 
+type RecentAnalysis = {
+  job_id: string;
+  file_name?: string;
+  created_at?: string;
+  final_score?: number | string | null;
+  recommendation?: string | null;
+  confidence?: number | string | null;
+  risk_level?: string | null;
+  integrity_score?: number | string | null;
+  ai_generated_likelihood?: string | null;
+  model?: string | null;
+  tokens?: number | string | null;
+  latency_seconds?: number | string | null;
+};
+
 const API_URL = "https://revieweros-api-933794864277.europe-west1.run.app";
 const WS_URL = "wss://revieweros-api-933794864277.europe-west1.run.app/ws/analyze";
 
@@ -48,6 +63,28 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [telemetry, setTelemetry] = useState<any>(null);
+  const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    loadRecentAnalyses();
+  }, []);
+
+  async function loadRecentAnalyses() {
+    try {
+      setHistoryLoading(true);
+
+      const response = await fetch(`${API_URL}/analyses?limit=10`);
+      const json = await response.json();
+
+      setRecentAnalyses(Array.isArray(json.items) ? json.items : []);
+    } catch (error) {
+      console.error("Failed to load recent analyses:", error);
+      setRecentAnalyses([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
 
   async function analyzeFile() {
     if (!file) return;
@@ -78,7 +115,7 @@ function App() {
       );
     };
 
-    socket.onmessage = (message) => {
+    socket.onmessage = async (message) => {
       const event: StreamEvent = JSON.parse(message.data);
 
       setEvents((previousEvents) => [...previousEvents, event]);
@@ -91,15 +128,19 @@ function App() {
         const rawResult = event.result || {};
         const normalized = normalizeResult(rawResult);
 
-        setData({
+        const completedData = {
           job_id: rawResult.job_id || event.job_id || crypto.randomUUID(),
           file_name: rawResult.file_name || event.file_name || selectedFile.name,
           result: normalized,
-        });
+        };
 
+        setData(completedData);
         setTelemetry(normalized.telemetry || event.telemetry || null);
         setLoading(false);
         socket.close();
+
+        await saveAnalysisToHistory(completedData);
+        await loadRecentAnalyses();
       }
 
       if (event.type === "error") {
@@ -242,6 +283,8 @@ function App() {
           telemetry: fallbackTelemetry,
         },
       ]);
+
+      await loadRecentAnalyses();
     } catch (error) {
       console.error(error);
       alert("Analysis failed.");
@@ -255,6 +298,25 @@ function App() {
       ]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function saveAnalysisToHistory(analysis: ReviewResult) {
+    try {
+      await fetch(`${API_URL}/analyses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          job_id: analysis.job_id,
+          file_name: analysis.file_name,
+          result: analysis.result,
+          report_path: analysis.report_path,
+        }),
+      });
+    } catch (error) {
+      console.error("Failed to save analysis history:", error);
     }
   }
 
@@ -278,21 +340,87 @@ function App() {
         throw new Error("PDF export failed.");
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `${data.job_id}-revieweros-report.pdf`;
-
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-
-      window.URL.revokeObjectURL(url);
+      await downloadBlobResponse(response, `${data.job_id}-revieweros-report.pdf`);
+      await loadRecentAnalyses();
     } catch (error) {
       console.error(error);
       alert("PDF export failed.");
+    }
+  }
+
+  async function downloadSavedReport(jobId: string) {
+    try {
+      const response = await fetch(`${API_URL}/analyses/${jobId}/report`);
+
+      if (!response.ok) {
+        throw new Error("Saved PDF export failed.");
+      }
+
+      await downloadBlobResponse(response, `${jobId}-revieweros-report.pdf`);
+    } catch (error) {
+      console.error(error);
+      alert("Saved PDF export failed.");
+    }
+  }
+
+  async function loadSavedAnalysis(jobId: string) {
+    try {
+      const response = await fetch(`${API_URL}/analyses/${jobId}`);
+      const json = await response.json();
+
+      if (json.error || !json.result) {
+        alert(json.error || "Saved analysis could not be loaded.");
+        return;
+      }
+
+      const normalized = normalizeResult(json.result);
+
+      setData({
+        job_id: json.job_id || jobId,
+        file_name: json.file_name || "Saved analysis",
+        report_path: json.report_path,
+        result: normalized,
+      });
+
+      setTelemetry(normalized.telemetry || null);
+
+      setEvents([
+        {
+          type: "session_started",
+          agent_label: "ReviewerOS",
+          message: "Saved analysis loaded from history.",
+        },
+        {
+          type: "agent_completed",
+          agent_label: "Scientific Reviewer",
+          message: "Scientific Reviewer result loaded.",
+        },
+        {
+          type: "agent_completed",
+          agent_label: "Commercial Reviewer",
+          message: "Commercial Reviewer result loaded.",
+        },
+        {
+          type: "agent_completed",
+          agent_label: "Risk Reviewer",
+          message: "Risk Reviewer result loaded.",
+        },
+        {
+          type: "agent_completed",
+          agent_label: "Integrity Reviewer",
+          message: "Integrity Reviewer result loaded.",
+        },
+        {
+          type: "chair_completed",
+          agent_label: "Chair Agent",
+          message: "Chair synthesis loaded.",
+        },
+      ]);
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      console.error(error);
+      alert("Failed to load saved analysis.");
     }
   }
 
@@ -344,52 +472,62 @@ function App() {
         <TelemetryBar telemetry={effectiveTelemetry} loading={loading} events={events} />
 
         <section className="mt-8 grid gap-6 xl:grid-cols-[380px_1fr]">
-          <aside className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
-            <h2 className="text-2xl font-bold">Upload Application</h2>
+          <aside className="space-y-6">
+            <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
+              <h2 className="text-2xl font-bold">Upload Application</h2>
 
-            <p className="mt-3 leading-7 text-slate-400">
-              TXT files use live WebSocket streaming. PDF and DOCX use standard cloud analysis.
-            </p>
-
-            <div className="mt-6 rounded-2xl border border-dashed border-slate-700 bg-slate-950 p-6">
-              <input
-                id="file-upload"
-                type="file"
-                accept=".txt,.pdf,.docx,.md"
-                onChange={(event) => setFile(event.target.files?.[0] || null)}
-                className="hidden"
-              />
-
-              <label
-                htmlFor="file-upload"
-                className="inline-flex w-fit cursor-pointer rounded-xl bg-white px-4 py-2 font-semibold text-slate-900 transition hover:bg-slate-200"
-              >
-                Dosya Seç
-              </label>
-
-              <p className="mt-4 text-slate-400">
-                {file ? (
-                  <>
-                    Selected:{" "}
-                    <span className="font-semibold text-white">
-                      {shortFileName(file.name)}
-                    </span>
-                  </>
-                ) : (
-                  "Henüz dosya seçilmedi"
-                )}
+              <p className="mt-3 leading-7 text-slate-400">
+                TXT files use live WebSocket streaming. PDF and DOCX use standard cloud analysis.
               </p>
+
+              <div className="mt-6 rounded-2xl border border-dashed border-slate-700 bg-slate-950 p-6">
+                <input
+                  id="file-upload"
+                  type="file"
+                  accept=".txt,.pdf,.docx,.md"
+                  onChange={(event) => setFile(event.target.files?.[0] || null)}
+                  className="hidden"
+                />
+
+                <label
+                  htmlFor="file-upload"
+                  className="inline-flex w-fit cursor-pointer rounded-xl bg-white px-4 py-2 font-semibold text-slate-900 transition hover:bg-slate-200"
+                >
+                  Dosya Seç
+                </label>
+
+                <p className="mt-4 text-slate-400">
+                  {file ? (
+                    <>
+                      Selected:{" "}
+                      <span className="font-semibold text-white">
+                        {shortFileName(file.name)}
+                      </span>
+                    </>
+                  ) : (
+                    "Henüz dosya seçilmedi"
+                  )}
+                </p>
+              </div>
+
+              <button
+                onClick={analyzeFile}
+                disabled={!file || loading}
+                className="mt-6 w-full rounded-2xl bg-white px-5 py-3 text-lg font-bold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {loading ? "Analyzing with ReviewerOS..." : "Analyze with ReviewerOS"}
+              </button>
+
+              {(loading || data || events.length > 0) && <AgentTimeline events={events} />}
             </div>
 
-            <button
-              onClick={analyzeFile}
-              disabled={!file || loading}
-              className="mt-6 w-full rounded-2xl bg-white px-5 py-3 text-lg font-bold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {loading ? "Analyzing with ReviewerOS..." : "Analyze with ReviewerOS"}
-            </button>
-
-            {(loading || data || events.length > 0) && <AgentTimeline events={events} />}
+            <RecentAnalysesPanel
+              items={recentAnalyses}
+              loading={historyLoading}
+              onRefresh={loadRecentAnalyses}
+              onLoad={loadSavedAnalysis}
+              onDownload={downloadSavedReport}
+            />
           </aside>
 
           <section className="min-w-0 rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
@@ -466,6 +604,104 @@ function App() {
           </section>
         </section>
       </main>
+    </div>
+  );
+}
+
+function RecentAnalysesPanel({
+  items,
+  loading,
+  onRefresh,
+  onLoad,
+  onDownload,
+}: {
+  items: RecentAnalysis[];
+  loading: boolean;
+  onRefresh: () => void;
+  onLoad: (jobId: string) => void;
+  onDownload: (jobId: string) => void;
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-bold">Recent Analyses</h3>
+          <p className="mt-1 text-xs text-slate-500">Saved reports from Firestore history.</p>
+        </div>
+
+        <button
+          onClick={onRefresh}
+          className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800"
+        >
+          {loading ? "Loading..." : "Refresh"}
+        </button>
+      </div>
+
+      <div className="reviewer-scroll mt-4 max-h-[430px] space-y-3 overflow-y-auto pr-1">
+        {items.length === 0 && (
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm leading-6 text-slate-500">
+            No saved analyses yet. Run a new analysis to populate history.
+          </div>
+        )}
+
+        {items.map((item) => (
+          <div
+            key={item.job_id}
+            className="rounded-2xl border border-slate-800 bg-slate-950 p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="line-clamp-2 text-sm font-semibold text-white">
+                  {shortFileName(item.file_name || "Untitled analysis", 58)}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  {formatDate(item.created_at)}
+                </p>
+              </div>
+
+              <div className="shrink-0 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-sm font-black text-blue-300">
+                {item.final_score ?? "-"}
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <MiniStat label="Decision" value={item.recommendation || "-"} />
+              <MiniStat label="Risk" value={item.risk_level || "-"} />
+              <MiniStat label="Tokens" value={formatTelemetryValue(item.tokens)} />
+              <MiniStat
+                label="Latency"
+                value={item.latency_seconds ? `${item.latency_seconds}s` : "-"}
+              />
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => onLoad(item.job_id)}
+                className="flex-1 rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-950 transition hover:bg-slate-200"
+              >
+                Load
+              </button>
+
+              <button
+                onClick={() => onDownload(item.job_id)}
+                className="flex-1 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-300 transition hover:bg-blue-500/20"
+              >
+                PDF
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-2">
+      <p className="text-[10px] uppercase tracking-wider text-slate-500">{label}</p>
+      <p className="mt-1 truncate font-semibold text-slate-200">{String(value)}</p>
     </div>
   );
 }
@@ -1148,6 +1384,31 @@ function estimateGeminiFlashLiteCost(tokens: number) {
   const estimatedUsd = (tokens / 1_000_000) * 0.35;
 
   return Number(estimatedUsd.toFixed(6));
+}
+
+function formatDate(value?: string) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString();
+}
+
+async function downloadBlobResponse(response: Response, filename: string) {
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+
+  window.URL.revokeObjectURL(url);
 }
 
 export default App;
