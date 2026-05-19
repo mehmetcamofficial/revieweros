@@ -76,6 +76,7 @@ def build_analysis_summary(
         "latency_seconds": telemetry.get("latency_seconds"),
         "provider": telemetry.get("provider"),
         "agent_runtime": telemetry.get("agent_runtime"),
+        "trace_id": telemetry.get("trace_id"),
         "telemetry": telemetry,
         "report_path": report_path,
         "result": result,
