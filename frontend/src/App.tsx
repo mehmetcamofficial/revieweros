@@ -860,7 +860,7 @@ function App() {
                     onClick={() => shareReport(data.job_id)}
                     className="w-fit rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
                   >
-                    Share Report
+                    Copy PDF Link
                   </button>
 
                   <button
@@ -1163,7 +1163,7 @@ function RecentAnalysesPanel({
                   onClick={() => onShare(item.job_id)}
                   className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-300 transition hover:bg-emerald-500/20"
                 >
-                  Share
+                  Copy Link
                 </button>
 
                 <button
