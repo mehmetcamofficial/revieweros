@@ -3,21 +3,22 @@ import os
 import time
 import uuid
 
-from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from services.parser import extract_text_from_file
-from services.gemini import run_reviewer_panel
-from services.report_generator import generate_markdown_report
-from services.pdf_report import generate_pdf_report
-from services.streaming import run_streaming_review
+from services.auth import optional_user_id, require_demo_auth
 from services.firestore_store import (
     get_analysis,
     list_analyses,
     save_analysis,
     upsert_report_path,
 )
+from services.gemini import run_reviewer_panel
+from services.parser import extract_text_from_file
+from services.pdf_report import generate_pdf_report
+from services.report_generator import generate_markdown_report
+from services.streaming import run_streaming_review
 
 
 app = FastAPI(
@@ -97,17 +98,32 @@ def health():
     }
 
 
+@app.get("/auth/check")
+def check_auth(user_id: str = Depends(require_demo_auth)):
+    return {
+        "ok": True,
+        "user_id": user_id,
+    }
+
+
 @app.get("/analyses")
-def get_recent_analyses(limit: int = 20):
+def get_recent_analyses(
+    limit: int = 20,
+    user_id: str = Depends(require_demo_auth),
+):
     safe_limit = max(1, min(limit, 50))
 
     return {
-        "items": list_analyses(limit=safe_limit),
+        "user_id": user_id,
+        "items": list_analyses(limit=safe_limit, user_id=user_id),
     }
 
 
 @app.get("/analyses/{job_id}")
-def get_saved_analysis(job_id: str):
+def get_saved_analysis(
+    job_id: str,
+    user_id: str = Depends(require_demo_auth),
+):
     analysis = get_analysis(job_id)
 
     if not analysis:
@@ -115,11 +131,21 @@ def get_saved_analysis(job_id: str):
             "error": "Analysis not found.",
         }
 
+    analysis_user_id = analysis.get("user_id") or "demo-user"
+
+    if analysis_user_id != user_id:
+        return {
+            "error": "Analysis not found for this user.",
+        }
+
     return analysis
 
 
 @app.post("/analyses")
-def create_saved_analysis(payload: dict):
+def create_saved_analysis(
+    payload: dict,
+    user_id: str = Depends(require_demo_auth),
+):
     job_id = payload.get("job_id", str(uuid.uuid4()))
     file_name = payload.get("file_name", "application")
     result = payload.get("result")
@@ -137,16 +163,29 @@ def create_saved_analysis(payload: dict):
         file_name=file_name,
         result=result,
         report_path=report_path,
+        user_id=user_id,
     )
 
     return {
         "job_id": job_id,
+        "user_id": user_id,
         "saved": saved,
     }
 
 
 @app.get("/analyses/{job_id}/report")
-def download_saved_analysis_report(job_id: str):
+def download_saved_analysis_report(
+    job_id: str,
+    user_id: str = Depends(optional_user_id),
+):
+    """
+    Public-ish share endpoint.
+
+    It intentionally does not require the demo access code so a copied PDF link
+    can be opened directly by a reviewer/investor/demo audience.
+
+    If a user_id header is present, it is accepted but not enforced here.
+    """
     analysis = get_analysis(job_id)
 
     if not analysis:
@@ -181,7 +220,10 @@ def download_saved_analysis_report(job_id: str):
 
 
 @app.post("/analyze")
-async def analyze_application(file: UploadFile = File(...)):
+async def analyze_application(
+    file: UploadFile = File(...),
+    user_id: str = Depends(require_demo_auth),
+):
     job_id = str(uuid.uuid4())
 
     if not file.filename:
@@ -246,10 +288,12 @@ async def analyze_application(file: UploadFile = File(...)):
         file_name=file.filename,
         result=result,
         report_path=report_path,
+        user_id=user_id,
     )
 
     return {
         "job_id": job_id,
+        "user_id": user_id,
         "file_name": file.filename,
         "report_path": report_path,
         "result": result,
@@ -257,7 +301,10 @@ async def analyze_application(file: UploadFile = File(...)):
 
 
 @app.post("/report/pdf")
-async def create_pdf_report(payload: dict):
+async def create_pdf_report(
+    payload: dict,
+    user_id: str = Depends(require_demo_auth),
+):
     job_id = payload.get("job_id", str(uuid.uuid4()))
     result = payload.get("result")
     file_name = payload.get("file_name", "application")
@@ -283,6 +330,7 @@ async def create_pdf_report(payload: dict):
         file_name=file_name,
         result=result,
         report_path=pdf_path,
+        user_id=user_id,
     )
 
     return FileResponse(
@@ -302,6 +350,20 @@ async def websocket_analyze(websocket: WebSocket):
         job_id = payload.get("job_id", str(uuid.uuid4()))
         file_name = payload.get("file_name", "streamed_application.txt")
         application_text = payload.get("application_text", "")
+        user_id = payload.get("user_id", "demo-user")
+        access_code = payload.get("access_code")
+
+        expected_access_code = os.getenv("REVIEWEROS_ACCESS_CODE", "revieweros-demo-2026")
+
+        if expected_access_code and access_code != expected_access_code:
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": "Invalid or missing ReviewerOS access code.",
+                }
+            )
+            await websocket.close()
+            return
 
         if not application_text.strip():
             await websocket.send_json(

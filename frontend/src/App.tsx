@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
+type AuthSession = {
+  userId: string;
+  accessCode: string;
+};
+
 type ReviewResult = {
   job_id: string;
   file_name: string;
@@ -33,6 +38,7 @@ type StreamEvent = {
 
 type RecentAnalysis = {
   job_id: string;
+  user_id?: string | null;
   file_name?: string;
   created_at?: string;
   final_score?: number | string | null;
@@ -48,6 +54,7 @@ type RecentAnalysis = {
 
 const API_URL = "https://revieweros-api-933794864277.europe-west1.run.app";
 const WS_URL = "wss://revieweros-api-933794864277.europe-west1.run.app/ws/analyze";
+const AUTH_STORAGE_KEY = "revieweros_auth_session";
 
 const reviewerSteps = [
   "Scientific Reviewer",
@@ -58,6 +65,29 @@ const reviewerSteps = [
 ];
 
 function App() {
+  const [authSession, setAuthSession] = useState<AuthSession | null>(() => {
+    try {
+      const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+      if (!raw) return null;
+
+      const parsed = JSON.parse(raw);
+
+      if (!parsed?.userId || !parsed?.accessCode) {
+        return null;
+      }
+
+      return {
+        userId: String(parsed.userId),
+        accessCode: String(parsed.accessCode),
+      };
+    } catch {
+      return null;
+    }
+  });
+
+  const [authChecking, setAuthChecking] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
   const [file, setFile] = useState<File | null>(null);
   const [data, setData] = useState<ReviewResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,6 +101,8 @@ function App() {
   const finalDecisionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    if (!authSession) return;
+
     loadRecentAnalyses();
     bootSharedReport();
 
@@ -85,7 +117,18 @@ function App() {
       window.removeEventListener("popstate", handleRouteChange);
       window.removeEventListener("hashchange", handleRouteChange);
     };
-  }, []);
+  }, [authSession?.userId, authSession?.accessCode]);
+
+  function getAuthHeaders() {
+    if (!authSession) {
+      return {};
+    }
+
+    return {
+      "X-ReviewerOS-User-Id": authSession.userId,
+      "X-ReviewerOS-Access-Code": authSession.accessCode,
+    };
+  }
 
   function showToast(message: string) {
     setToast(message);
@@ -95,11 +138,84 @@ function App() {
     }, 2200);
   }
 
+  async function handleLogin(userId: string, accessCode: string) {
+    const cleanedUserId = userId.trim();
+    const cleanedAccessCode = accessCode.trim();
+
+    if (!cleanedUserId || !cleanedAccessCode) {
+      setAuthError("Please enter both User ID and Access Code.");
+      return;
+    }
+
+    setAuthChecking(true);
+    setAuthError(null);
+
+    try {
+      const response = await fetch(`${API_URL}/auth/check`, {
+        headers: {
+          "X-ReviewerOS-User-Id": cleanedUserId,
+          "X-ReviewerOS-Access-Code": cleanedAccessCode,
+        },
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || json.error || "Invalid access code.");
+      }
+
+      const nextSession = {
+        userId: json.user_id || cleanedUserId,
+        accessCode: cleanedAccessCode,
+      };
+
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextSession));
+      setAuthSession(nextSession);
+      setAuthError(null);
+      showToast("Signed in ✓");
+    } catch (error: any) {
+      setAuthError(error?.message || "Login failed.");
+      setAuthSession(null);
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    } finally {
+      setAuthChecking(false);
+    }
+  }
+
+  function handleLogout() {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    setAuthSession(null);
+    setFile(null);
+    setData(null);
+    setEvents([]);
+    setTelemetry(null);
+    setRecentAnalyses([]);
+    setSelectedHistoryJobId(null);
+
+    if (
+      window.location.pathname.startsWith("/report/") ||
+      window.location.search.includes("report=") ||
+      window.location.hash.includes("report=")
+    ) {
+      window.history.pushState({}, "", "/");
+    }
+  }
+
   async function loadRecentAnalyses() {
+    if (!authSession) return;
+
     try {
       setHistoryLoading(true);
 
-      const response = await fetch(`${API_URL}/analyses?limit=10`);
+      const response = await fetch(`${API_URL}/analyses?limit=10`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (response.status === 401) {
+        handleLogout();
+        return;
+      }
+
       const json = await response.json();
 
       setRecentAnalyses(Array.isArray(json.items) ? json.items : []);
@@ -112,6 +228,8 @@ function App() {
   }
 
   async function bootSharedReport(scroll = false) {
+    if (!authSession) return;
+
     const jobId = getReportJobIdFromPath();
 
     if (!jobId) return;
@@ -133,7 +251,7 @@ function App() {
   }
 
   async function analyzeFile() {
-    if (!file) return;
+    if (!file || !authSession) return;
 
     setLoading(true);
     setData(null);
@@ -157,6 +275,8 @@ function App() {
   }
 
   async function analyzeWithWebSocket(selectedFile: File) {
+    if (!authSession) return;
+
     const applicationText = await selectedFile.text();
     const socket = new WebSocket(WS_URL);
 
@@ -166,6 +286,8 @@ function App() {
           job_id: crypto.randomUUID(),
           file_name: selectedFile.name,
           application_text: applicationText,
+          user_id: authSession.userId,
+          access_code: authSession.accessCode,
         })
       );
     };
@@ -221,6 +343,8 @@ function App() {
   }
 
   async function analyzeWithRest(selectedFile: File) {
+    if (!authSession) return;
+
     const formData = new FormData();
     formData.append("file", selectedFile);
 
@@ -262,6 +386,7 @@ function App() {
 
       const response = await fetch(`${API_URL}/analyze`, {
         method: "POST",
+        headers: getAuthHeaders(),
         body: formData,
       });
 
@@ -270,14 +395,20 @@ function App() {
       const endTime = performance.now();
       const latencySeconds = Number(((endTime - startTime) / 1000).toFixed(2));
 
-      if (json.error) {
-        alert(json.error);
+      if (response.status === 401) {
+        alert("Invalid or expired access code. Please sign in again.");
+        handleLogout();
+        return;
+      }
+
+      if (!response.ok || json.error) {
+        alert(json.error || json.detail || "Analysis failed.");
         setData(null);
         setEvents([
           {
             type: "error",
             agent_label: "ReviewerOS",
-            message: json.error,
+            message: json.error || json.detail || "Analysis failed.",
           },
         ]);
         return;
@@ -377,11 +508,14 @@ function App() {
   }
 
   async function saveAnalysisToHistory(analysis: ReviewResult) {
+    if (!authSession) return;
+
     try {
       await fetch(`${API_URL}/analyses`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...getAuthHeaders(),
         },
         body: JSON.stringify({
           job_id: analysis.job_id,
@@ -396,13 +530,14 @@ function App() {
   }
 
   async function downloadReport() {
-    if (!data) return;
+    if (!data || !authSession) return;
 
     try {
       const response = await fetch(`${API_URL}/report/pdf`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...getAuthHeaders(),
         },
         body: JSON.stringify({
           job_id: data.job_id,
@@ -451,14 +586,25 @@ function App() {
       toast?: string;
     } = {}
   ) {
+    if (!authSession) return;
+
     const { pushUrl = true, scroll = true, toast = "Loaded from history ✓" } = options;
 
     try {
-      const response = await fetch(`${API_URL}/analyses/${jobId}`);
+      const response = await fetch(`${API_URL}/analyses/${jobId}`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (response.status === 401) {
+        alert("Invalid or expired access code. Please sign in again.");
+        handleLogout();
+        return;
+      }
+
       const json = await response.json();
 
-      if (json.error || !json.result) {
-        alert(json.error || `Saved analysis could not be loaded for report ID: ${jobId}`);
+      if (!response.ok || json.error || !json.result) {
+        alert(json.error || json.detail || `Saved analysis could not be loaded for report ID: ${jobId}`);
         setData(null);
         setTelemetry(null);
         setSelectedHistoryJobId(null);
@@ -574,6 +720,16 @@ function App() {
     return "Low";
   }, [result]);
 
+  if (!authSession) {
+    return (
+      <LandingLogin
+        onLogin={handleLogin}
+        loading={authChecking}
+        error={authError}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-slate-950 text-white">
       {toast && (
@@ -591,8 +747,21 @@ function App() {
             </p>
           </div>
 
-          <div className="max-w-full shrink-0 truncate rounded-full border border-emerald-500/30 bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-300">
-            Cloud Run Backend Connected
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="max-w-full shrink-0 truncate rounded-full border border-emerald-500/30 bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-300">
+              Cloud Run Backend Connected
+            </div>
+
+            <div className="rounded-full border border-blue-500/30 bg-blue-500/10 px-5 py-2 text-sm font-semibold text-blue-200">
+              Workspace: {authSession.userId}
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="rounded-full border border-slate-700 px-5 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-800"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>
@@ -768,6 +937,126 @@ function App() {
   );
 }
 
+function LandingLogin({
+  onLogin,
+  loading,
+  error,
+}: {
+  onLogin: (userId: string, accessCode: string) => void;
+  loading: boolean;
+  error: string | null;
+}) {
+  const [userId, setUserId] = useState("hakki");
+  const [accessCode, setAccessCode] = useState("revieweros-demo-2026");
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white">
+      <header className="border-b border-slate-800/80 px-6 py-6 md:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-black tracking-tight">ReviewerOS</h1>
+            <p className="mt-2 text-slate-400">
+              Autonomous AI reviewer panel for grants, accelerators, and startup applications.
+            </p>
+          </div>
+
+          <div className="hidden rounded-full border border-emerald-500/30 bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-300 md:block">
+            Demo Access
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto grid max-w-7xl gap-8 px-6 py-12 md:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:py-20">
+        <section className="flex flex-col justify-center">
+          <div className="max-w-3xl">
+            <p className="mb-4 inline-flex rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-300">
+              AI reviewer operating system
+            </p>
+
+            <h2 className="text-5xl font-black leading-tight tracking-tight md:text-6xl">
+              Multi-agent review for proposals, grants, and accelerator applications.
+            </h2>
+
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-400">
+              Upload a proposal and generate a structured reviewer panel output:
+              scientific merit, commercial readiness, risk analysis, integrity checks,
+              chair decision, and a shareable PDF report.
+            </p>
+
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              <LandingFeature title="Scientific Reviewer" text="Methodology, novelty, validation, and feasibility." />
+              <LandingFeature title="Commercial Reviewer" text="Market, business model, pricing, and GTM readiness." />
+              <LandingFeature title="Risk Reviewer" text="Operational, regulatory, ethical, and execution risks." />
+              <LandingFeature title="Integrity Reviewer" text="Unsupported claims, AI-likelihood, and data governance." />
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl">
+          <h3 className="text-2xl font-black">Enter demo workspace</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            Use a workspace ID to separate analysis history. The access code protects the demo backend.
+          </p>
+
+          <div className="mt-6 space-y-4">
+            <label className="block">
+              <span className="text-sm font-semibold text-slate-300">User ID / Workspace</span>
+              <input
+                value={userId}
+                onChange={(event) => setUserId(event.target.value)}
+                placeholder="hakki"
+                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-blue-400"
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-semibold text-slate-300">Access Code</span>
+              <input
+                value={accessCode}
+                onChange={(event) => setAccessCode(event.target.value)}
+                placeholder="revieweros-demo-2026"
+                type="password"
+                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-blue-400"
+              />
+            </label>
+
+            {error && (
+              <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm leading-6 text-red-200">
+                {error}
+              </div>
+            )}
+
+            <button
+              onClick={() => onLogin(userId, accessCode)}
+              disabled={loading}
+              className="w-full rounded-2xl bg-white px-5 py-3 text-lg font-black text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? "Checking access..." : "Enter ReviewerOS"}
+            </button>
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm leading-6 text-slate-400">
+            Demo default:
+            <br />
+            <span className="font-semibold text-slate-200">User ID:</span> hakki
+            <br />
+            <span className="font-semibold text-slate-200">Access Code:</span> revieweros-demo-2026
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function LandingFeature({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+      <h3 className="font-bold text-white">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-400">{text}</p>
+    </div>
+  );
+}
+
 function RecentAnalysesPanel({
   items,
   loading,
@@ -790,7 +1079,7 @@ function RecentAnalysesPanel({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-bold">Recent Analyses</h3>
-          <p className="mt-1 text-xs text-slate-500">Saved reports from Firestore history.</p>
+          <p className="mt-1 text-xs text-slate-500">Saved reports from this workspace.</p>
         </div>
 
         <button
@@ -1078,7 +1367,9 @@ function ReviewerMetricBlock({
   return (
     <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-950 p-4">
       <div className="flex items-center justify-between gap-4">
-        <p className={`whitespace-nowrap text-sm font-semibold ${styles.text}`}>{label}</p>
+        <p className={`whitespace-nowrap text-sm font-semibold ${styles.text}`}>
+          {label}
+        </p>
 
         <p className="shrink-0 text-right text-2xl font-black text-white">
           {String(value)}
