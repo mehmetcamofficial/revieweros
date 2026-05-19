@@ -119,7 +119,7 @@ function App() {
     };
   }, [authSession?.userId, authSession?.accessCode]);
 
-  function getAuthHeaders() {
+  function getAuthHeaders(): Record<string, string> {
     if (!authSession) {
       return {};
     }
