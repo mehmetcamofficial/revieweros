@@ -742,7 +742,21 @@ function App() {
       <header className="border-b border-slate-800/80 bg-slate-950/95 px-6 py-6 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-5 overflow-hidden md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
-            <h1 className="text-4xl font-black tracking-tight">Evalora ReviewerOS</h1>
+            <div className="flex items-center gap-3">
+              <img
+                src="/evalora-icon.png"
+                alt="Evalora"
+                className="h-11 w-11 object-contain"
+              />
+              <div>
+                <h1 className="text-3xl font-black tracking-tight text-white">
+                  Evalora ReviewerOS
+                </h1>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80">
+                  Multi-agent proposal review
+                </p>
+              </div>
+            </div>
             <p className="mt-2 max-w-3xl text-slate-400">
               AI-powered multi-agent proposal review workspace for grants, accelerators, and innovation funding.
             </p>
@@ -1094,7 +1108,21 @@ function LandingLogin({
       <header className="border-b border-slate-800/80 px-6 py-6 md:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div>
-            <h1 className="text-4xl font-black tracking-tight">Evalora ReviewerOS</h1>
+            <div className="flex items-center gap-3">
+              <img
+                src="/evalora-icon.png"
+                alt="Evalora"
+                className="h-11 w-11 object-contain"
+              />
+              <div>
+                <h1 className="text-3xl font-black tracking-tight text-white">
+                  Evalora ReviewerOS
+                </h1>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80">
+                  Multi-agent proposal review
+                </p>
+              </div>
+            </div>
             <p className="mt-2 text-slate-400">
               AI-powered multi-agent proposal review workspace for grants, accelerators, and innovation funding.
             </p>
