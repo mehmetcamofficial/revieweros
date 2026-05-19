@@ -74,6 +74,9 @@ def build_analysis_summary(
         "tokens": telemetry.get("tokens"),
         "cost_usd": telemetry.get("cost_usd"),
         "latency_seconds": telemetry.get("latency_seconds"),
+        "provider": telemetry.get("provider"),
+        "agent_runtime": telemetry.get("agent_runtime"),
+        "telemetry": telemetry,
         "report_path": report_path,
         "result": result,
     }

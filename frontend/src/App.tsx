@@ -57,6 +57,10 @@ const WS_URL = "wss://revieweros-api-933794864277.europe-west1.run.app/ws/analyz
 const AUTH_STORAGE_KEY = "revieweros_auth_session";
 const WORKSPACE_MONTHLY_QUOTA = 25;
 const REQUEST_ACCESS_ENDPOINT = `${API_URL}/request-access`;
+const AI_PROVIDER_NAME = "Vertex AI";
+const AI_MODEL_NAME = "Gemini 2.5 Pro";
+const AI_STACK_LABEL = `${AI_MODEL_NAME} on ${AI_PROVIDER_NAME}`;
+
 const SAMPLE_REPORT_URL =
   `${API_URL}/analyses/4e5fdf73-5a90-4f88-a265-3b3fab78ebad/report`;
 
@@ -1593,6 +1597,8 @@ function LandingLogin({
               <LandingFeature title="Integrity Reviewer" text="Unsupported claims, AI-likelihood, and data governance." />
             </div>
           </div>
+          <LandingSimulationPanel />
+
           <LandingSalesPreview onRequestAccess={() => setRequestModalOpen(true)} />
         </section>
 
@@ -1648,6 +1654,108 @@ function LandingLogin({
         </section>
       </main>
     </div>
+  );
+}
+
+function LandingSimulationPanel() {
+  const [activeStep, setActiveStep] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveStep((current) => (current + 1) % 5);
+    }, 1800);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const steps = [
+    {
+      label: "Proposal uploaded",
+      detail: "Evalora extracts document text and prepares the reviewer workspace.",
+      status: "Ready",
+    },
+    {
+      label: "Scientific Reviewer",
+      detail: "Gemini analyzes methodology, novelty, validation, and feasibility.",
+      status: "Agent",
+    },
+    {
+      label: "Commercial Reviewer",
+      detail: "Market, business model, GTM readiness, and scalability are scored.",
+      status: "Agent",
+    },
+    {
+      label: "Risk & Integrity Review",
+      detail: "Operational risks, unsupported claims, and AI-likelihood are checked.",
+      status: "Guardrail",
+    },
+    {
+      label: "Chair Agent Synthesis",
+      detail: "A final recommendation and shareable PDF report are generated.",
+      status: "Decision",
+    },
+  ];
+
+  return (
+    <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.24em] text-emerald-300">
+            Live workflow simulation
+          </p>
+          <h3 className="mt-2 text-2xl font-black text-white">
+            How Evalora reviews a proposal
+          </h3>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+            A specialized Gemini-powered reviewer panel evaluates each proposal,
+            compares reviewer signals, and produces an institutional report.
+          </p>
+        </div>
+
+        <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-300">
+          Powered by {AI_STACK_LABEL}
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {steps.map((step, index) => (
+          <div
+            key={step.label}
+            className={`group rounded-2xl border bg-slate-950 p-4 transition-all duration-500 ${
+              activeStep === index
+                ? "border-emerald-400/60 shadow-[0_0_30px_rgba(16,185,129,0.12)]"
+                : "border-slate-800 hover:border-emerald-500/30"
+            }`}
+          >
+            <div className="flex items-start gap-4">
+              <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-sm font-black text-emerald-300">
+                {index + 1}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-bold text-white">{step.label}</p>
+                  <span className="rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    {step.status}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  {step.detail}
+                </p>
+              </div>
+
+              <div
+                className={`mt-2 h-2 w-2 shrink-0 rounded-full transition-all duration-300 ${
+                  activeStep === index
+                    ? "animate-pulse bg-emerald-300 shadow-[0_0_16px_rgba(110,231,183,0.9)] scale-125"
+                    : "bg-slate-600"
+                }`}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
