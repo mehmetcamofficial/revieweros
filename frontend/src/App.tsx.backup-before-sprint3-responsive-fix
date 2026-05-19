@@ -55,14 +55,6 @@ type RecentAnalysis = {
 const API_URL = "https://revieweros-api-933794864277.europe-west1.run.app";
 const WS_URL = "wss://revieweros-api-933794864277.europe-west1.run.app/ws/analyze";
 const AUTH_STORAGE_KEY = "revieweros_auth_session";
-const WORKSPACE_MONTHLY_QUOTA = 25;
-const REQUEST_ACCESS_ENDPOINT = `${API_URL}/request-access`;
-const AI_PROVIDER_NAME = "Vertex AI";
-const AI_MODEL_NAME = "Gemini 2.5 Pro";
-const AI_STACK_LABEL = `${AI_MODEL_NAME} on ${AI_PROVIDER_NAME}`;
-
-const SAMPLE_REPORT_URL =
-  `${API_URL}/analyses/4e5fdf73-5a90-4f88-a265-3b3fab78ebad/report`;
 
 const reviewerSteps = [
   "Scientific Reviewer",
@@ -106,12 +98,6 @@ function App() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedHistoryJobId, setSelectedHistoryJobId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [requestModalOpen, setRequestModalOpen] = useState(false);
-  const [requestSubmitting, setRequestSubmitting] = useState(false);
-  const [requestEmail, setRequestEmail] = useState("");
-  const [requestOrganization, setRequestOrganization] = useState("");
-  const [requestUseCase, setRequestUseCase] = useState("Grant proposal review demo");
-  const [requestExpectedVolume, setRequestExpectedVolume] = useState("10");
 
   const finalDecisionRef = useRef<HTMLElement | null>(null);
 
@@ -151,63 +137,6 @@ function App() {
     window.setTimeout(() => {
       setToast(null);
     }, 2200);
-  }
-
-  async function handleRequestAccessSubmit() {
-    const email = requestEmail.trim();
-    const organization = requestOrganization.trim();
-    const useCase = requestUseCase.trim();
-    const expectedVolume = requestExpectedVolume.trim();
-
-    if (!email || !email.includes("@")) {
-      alert("Please enter a valid email address.");
-      return;
-    }
-
-    if (!organization) {
-      alert("Please enter your organization or workspace name.");
-      return;
-    }
-
-    if (!useCase) {
-      alert("Please describe your use case.");
-      return;
-    }
-
-    try {
-      setRequestSubmitting(true);
-
-      const response = await fetch(REQUEST_ACCESS_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          organization,
-          use_case: useCase,
-          expected_volume: expectedVolume,
-          source: "evalora-web",
-        }),
-      });
-
-      const json = await response.json();
-
-      if (!response.ok || !json.ok) {
-        throw new Error(json.detail || "Request access failed.");
-      }
-
-      setRequestModalOpen(false);
-      setRequestEmail("");
-      setRequestOrganization("");
-      setRequestUseCase("Grant proposal review demo");
-      setRequestExpectedVolume("10");
-      showToast("Access request received ✓");
-    } catch (error: any) {
-      alert(error?.message || "Request access failed.");
-    } finally {
-      setRequestSubmitting(false);
-    }
   }
 
   async function handleLogin(userId: string, accessCode: string) {
@@ -252,36 +181,6 @@ function App() {
     } finally {
       setAuthChecking(false);
     }
-  }
-
-  function resetWorkspaceForNewAnalysis() {
-    setFile(null);
-    setData(null);
-    setEvents([]);
-    setTelemetry(null);
-    setSelectedHistoryJobId(null);
-
-    if (
-      window.location.pathname.startsWith("/report/") ||
-      window.location.search.includes("report=") ||
-      window.location.hash.includes("report=")
-    ) {
-      window.history.pushState({}, "", "/");
-    }
-
-    showToast("Ready for a new analysis ✓");
-  }
-
-  function clearRecentAnalysesView() {
-    const confirmed = window.confirm(
-      "Clear the recent analyses list from this view? Saved reports will remain in Firestore."
-    );
-
-    if (!confirmed) return;
-
-    setRecentAnalyses([]);
-    setSelectedHistoryJobId(null);
-    showToast("Recent analyses cleared from view ✓");
   }
 
   function handleLogout() {
@@ -856,23 +755,8 @@ function App() {
         </div>
       )}
 
-      <RequestAccessModal
-        open={requestModalOpen}
-        email={requestEmail}
-        organization={requestOrganization}
-        useCase={requestUseCase}
-        expectedVolume={requestExpectedVolume}
-        submitting={requestSubmitting}
-        onEmailChange={setRequestEmail}
-        onOrganizationChange={setRequestOrganization}
-        onUseCaseChange={setRequestUseCase}
-        onExpectedVolumeChange={setRequestExpectedVolume}
-        onClose={() => setRequestModalOpen(false)}
-        onSubmit={handleRequestAccessSubmit}
-      />
-
       <header className="border-b border-slate-800/80 bg-slate-950/95 px-6 py-6 backdrop-blur md:px-8">
-        <div className="mx-auto flex max-w-[1700px] flex-col gap-5 overflow-hidden md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 overflow-hidden md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
               <img
@@ -904,20 +788,6 @@ function App() {
             </div>
 
             <button
-              onClick={resetWorkspaceForNewAnalysis}
-              className="rounded-full border border-blue-500/40 bg-blue-500/10 px-5 py-2 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/20"
-            >
-              New Analysis
-            </button>
-
-            <button
-              onClick={clearRecentAnalysesView}
-              className="rounded-full border border-slate-700 px-5 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-800"
-            >
-              Clear Recent
-            </button>
-
-            <button
               onClick={handleLogout}
               className="rounded-full border border-slate-700 px-5 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-800"
             >
@@ -927,10 +797,10 @@ function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1700px] px-6 py-8 md:px-8 md:py-10">
+      <main className="mx-auto max-w-7xl px-6 py-8 md:px-8 md:py-10">
         <TelemetryBar telemetry={effectiveTelemetry} loading={loading} events={events} />
 
-        <section className="mt-8 grid gap-6 xl:grid-cols-[460px_minmax(0,1fr)]">
+        <section className="mt-8 grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)_360px]">
           <aside className="space-y-6">
             <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
               <h2 className="text-2xl font-bold">Upload Application</h2>
@@ -1086,11 +956,6 @@ function App() {
               {(loading || data || events.length > 0) && <AgentTimeline events={events} />}
             </div>
 
-            <WorkspaceQuotaCard
-              used={recentAnalyses.length}
-              limit={WORKSPACE_MONTHLY_QUOTA}
-            />
-
             <RecentAnalysesPanel
               items={recentAnalyses}
               loading={historyLoading}
@@ -1124,7 +989,7 @@ function App() {
               </div>
 
               {data && (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => shareReport(data.job_id)}
                     className="w-fit rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
@@ -1142,153 +1007,40 @@ function App() {
               )}
             </div>
 
-            {effectiveTelemetry?.agent_traces?.length > 0 && (
-              <AgentTracePanel telemetry={effectiveTelemetry} />
-            )}
-
             {!data && !loading && (
               <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-950 p-10 text-center text-slate-500">
                 
-<div className="rounded-3xl border border-slate-800 bg-[#050816] p-8">
-  <div className="grid gap-8 2xl:grid-cols-[1.1fr_0.9fr]">
-    <div>
-      <div className="mb-4 inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1 text-sm font-medium text-emerald-300">
-        Welcome to Evalora
-      </div>
-
-      <h2 className="text-3xl font-black tracking-tight text-white">
-        Start your first AI reviewer panel
-      </h2>
-
-      <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400">
-        Upload a proposal PDF to generate structured reviewer intelligence,
-        scientific and commercial assessment, integrity checks, chair synthesis,
-        and a shareable PDF report.
-      </p>
-
-      <div className="mt-8 grid gap-3 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-          <p className="text-2xl font-black text-blue-300">1</p>
-          <p className="mt-2 font-bold text-white">Upload</p>
-          <p className="mt-1 text-sm leading-6 text-slate-500">
-            Add a PDF, DOCX, TXT, or Markdown proposal.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-          <p className="text-2xl font-black text-emerald-300">2</p>
-          <p className="mt-2 font-bold text-white">Review</p>
-          <p className="mt-1 text-sm leading-6 text-slate-500">
-            Five specialist agents evaluate the application.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-          <p className="text-2xl font-black text-cyan-300">3</p>
-          <p className="mt-2 font-bold text-white">Share</p>
-          <p className="mt-1 text-sm leading-6 text-slate-500">
-            Export a structured PDF report or copy a PDF link.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-8 flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={() => window.open(SAMPLE_REPORT_URL, "_blank", "noopener,noreferrer")}
-          className="rounded-xl border border-blue-500/40 bg-blue-500/10 px-5 py-3 text-sm font-bold text-blue-300 transition hover:bg-blue-500/20"
-        >
-          View Sample Report
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setRequestModalOpen(true)}
-          className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/20"
-        >
-          Request Access
-        </button>
-      </div>
+<div className="flex min-h-[260px] flex-col items-center justify-center rounded-3xl border border-slate-800 bg-[#050816] px-8 text-center">
+  <div className="max-w-2xl">
+    <div className="mb-4 inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1 text-sm font-medium text-emerald-300">
+      Welcome to Evalora
     </div>
 
-    <div className="space-y-4">
-      <div className="rounded-3xl border border-slate-800 bg-slate-950 p-5">
-        <p className="text-sm font-bold uppercase tracking-[0.24em] text-cyan-300">
-          What Evalora checks
-        </p>
+    <h2 className="text-3xl font-black tracking-tight text-white">
+      AI-powered multi-agent proposal review workspace
+    </h2>
 
-        <div className="mt-5 space-y-3">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-            <p className="font-bold text-white">Scientific merit</p>
-            <p className="mt-1 text-sm text-slate-500">
-              Methodology, novelty, validation, feasibility.
-            </p>
-          </div>
+    <p className="mt-4 text-base leading-7 text-slate-400">
+      Upload a proposal PDF to generate structured reviewer intelligence,
+      scientific and commercial assessment, integrity checks, and a
+      shareable PDF report.
+    </p>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-            <p className="font-bold text-white">Commercial readiness</p>
-            <p className="mt-1 text-sm text-slate-500">
-              Market, business model, GTM, scalability.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-            <p className="font-bold text-white">Risk and integrity</p>
-            <p className="mt-1 text-sm text-slate-500">
-              Operational risk, unsupported claims, AI-likelihood.
-            </p>
-          </div>
-        </div>
+    <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+      <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
+        Scientific merit analysis
       </div>
 
-      <div className="rounded-3xl border border-slate-800 bg-slate-950 p-5">
-        <p className="text-sm font-bold uppercase tracking-[0.24em] text-blue-300">
-          Evaluation templates
-        </p>
-
-        <div className="mt-5 grid gap-3">
-          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
-            <p className="font-bold text-white">Grant Proposal Review</p>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Scientific excellence, impact, feasibility, work plan, and reviewer consensus.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-            <p className="font-bold text-white">Accelerator Application</p>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Market, team, traction, business model, GTM readiness, and execution risk.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
-            <p className="font-bold text-white">Investment Screening</p>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Defensibility, scalability, risk profile, evidence quality, and funding readiness.
-            </p>
-          </div>
-        </div>
+      <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
+        Commercial readiness scoring
       </div>
 
-      <div className="rounded-3xl border border-slate-800 bg-slate-950 p-5">
-        <p className="text-sm font-bold uppercase tracking-[0.24em] text-emerald-300">
-          Coming next
-        </p>
+      <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
+        Risk & integrity review
+      </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-400">
-            Custom rubrics
-          </span>
-          <span className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-400">
-            Team review
-          </span>
-          <span className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-400">
-            API access
-          </span>
-          <span className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-400">
-            White-label portals
-          </span>
-        </div>
+      <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
+        Shareable PDF reports
       </div>
     </div>
   </div>
@@ -1301,7 +1053,7 @@ function App() {
 
             {data && (
               <>
-                <div className="mt-8 grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+                <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <MetricCard title="Final Score" value={chair?.final_score ?? "-"} />
                   <MetricCard title="Recommendation" value={chair?.recommendation ?? "-"} />
                   <MetricCard title="Confidence" value={chair?.confidence ?? "-"} />
@@ -1357,80 +1109,6 @@ function App() {
   );
 }
 
-
-function AgentTracePanel({ telemetry }: { telemetry: any }) {
-  const traces = telemetry?.agent_traces || [];
-  const traceId = telemetry?.trace_id || "not-available";
-
-  function downloadTraceJson() {
-    const blob = new Blob([JSON.stringify(telemetry, null, 2)], {
-      type: "application/json",
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = `evalora-agent-trace-${traceId}.json`;
-    link.click();
-
-    URL.revokeObjectURL(url);
-  }
-
-  return (
-    <section className="mt-6 rounded-3xl border border-slate-800 bg-slate-950 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.24em] text-emerald-300">
-            Agent Trace
-          </p>
-          <h3 className="mt-2 text-2xl font-black text-white">
-            Observable reviewer runtime
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Trace ID: <span className="font-mono text-slate-300">{traceId}</span>
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={downloadTraceJson}
-          className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/20"
-        >
-          Download Trace JSON
-        </button>
-      </div>
-
-      <div className="mt-5 grid gap-3">
-        {traces.map((trace: any, index: number) => (
-          <div
-            key={`${trace.agent}-${index}`}
-            className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-bold text-white">{trace.agent}</p>
-                <p className="mt-1 text-xs uppercase tracking-widest text-slate-500">
-                  {trace.status || "completed"}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 font-bold text-blue-300">
-                  confidence {trace.confidence ?? "-"}
-                </span>
-                <span className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 font-bold text-emerald-300">
-                  {trace.duration_ms ?? "-"} ms
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function PdfPreviewPanel({
   file,
   filePreviewUrl,
@@ -1441,7 +1119,7 @@ function PdfPreviewPanel({
   const isPdf = Boolean(file && file.name.toLowerCase().endsWith(".pdf"));
 
   return (
-    <aside className="min-w-0 rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl xl:col-start-2 xl:row-start-2">
+    <aside className="min-w-0 rounded-3xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl xl:sticky xl:top-8 xl:max-h-[calc(100vh-4rem)] xl:overflow-hidden">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-black tracking-tight text-white">
@@ -1542,88 +1220,11 @@ function LandingLogin({
 }) {
   const [userId, setUserId] = useState("");
   const [accessCode, setAccessCode] = useState("");
-  const [requestModalOpen, setRequestModalOpen] = useState(false);
-  const [requestSubmitting, setRequestSubmitting] = useState(false);
-  const [requestEmail, setRequestEmail] = useState("");
-  const [requestOrganization, setRequestOrganization] = useState("");
-  const [requestUseCase, setRequestUseCase] = useState("Grant proposal review demo");
-  const [requestExpectedVolume, setRequestExpectedVolume] = useState("10");
-
-  async function handleRequestAccessSubmit() {
-    const email = requestEmail.trim();
-    const organization = requestOrganization.trim();
-    const useCase = requestUseCase.trim();
-    const expectedVolume = requestExpectedVolume.trim();
-
-    if (!email || !email.includes("@")) {
-      alert("Please enter a valid email address.");
-      return;
-    }
-
-    if (!organization) {
-      alert("Please enter your organization or workspace name.");
-      return;
-    }
-
-    if (!useCase) {
-      alert("Please describe your use case.");
-      return;
-    }
-
-    try {
-      setRequestSubmitting(true);
-
-      const response = await fetch(REQUEST_ACCESS_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          organization,
-          use_case: useCase,
-          expected_volume: expectedVolume,
-          source: "evalora-landing",
-        }),
-      });
-
-      const json = await response.json();
-
-      if (!response.ok || !json.ok) {
-        throw new Error(json.detail || "Request access failed.");
-      }
-
-      setRequestModalOpen(false);
-      setRequestEmail("");
-      setRequestOrganization("");
-      setRequestUseCase("Grant proposal review demo");
-      setRequestExpectedVolume("10");
-      alert("Access request received. Evalora will follow up with demo access.");
-    } catch (error: any) {
-      alert(error?.message || "Request access failed.");
-    } finally {
-      setRequestSubmitting(false);
-    }
-  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      <RequestAccessModal
-        open={requestModalOpen}
-        email={requestEmail}
-        organization={requestOrganization}
-        useCase={requestUseCase}
-        expectedVolume={requestExpectedVolume}
-        submitting={requestSubmitting}
-        onEmailChange={setRequestEmail}
-        onOrganizationChange={setRequestOrganization}
-        onUseCaseChange={setRequestUseCase}
-        onExpectedVolumeChange={setRequestExpectedVolume}
-        onClose={() => setRequestModalOpen(false)}
-        onSubmit={handleRequestAccessSubmit}
-      />
       <header className="border-b border-slate-800/80 px-6 py-6 md:px-8">
-        <div className="mx-auto flex max-w-[1700px] items-center justify-between">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div>
             <div className="flex items-center gap-3">
               <img
@@ -1651,7 +1252,7 @@ function LandingLogin({
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-[1700px] gap-8 px-6 py-12 md:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:py-20">
+      <main className="mx-auto grid max-w-7xl gap-8 px-6 py-12 md:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:py-20">
         <section className="flex flex-col justify-center">
           <div className="max-w-3xl">
             <p className="mb-4 inline-flex rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-300">
@@ -1675,9 +1276,6 @@ function LandingLogin({
               <LandingFeature title="Integrity Reviewer" text="Unsupported claims, AI-likelihood, and data governance." />
             </div>
           </div>
-          <LandingSimulationPanel />
-
-          <LandingSalesPreview onRequestAccess={() => setRequestModalOpen(true)} />
         </section>
 
         <section className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl">
@@ -1731,244 +1329,6 @@ function LandingLogin({
           </div>
         </section>
       </main>
-    </div>
-  );
-}
-
-function LandingSimulationPanel() {
-  const [activeStep, setActiveStep] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveStep((current) => (current + 1) % 5);
-    }, 1800);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const steps = [
-    {
-      label: "Proposal uploaded",
-      detail: "Evalora extracts document text and prepares the reviewer workspace.",
-      status: "Ready",
-    },
-    {
-      label: "Scientific Reviewer",
-      detail: "Gemini analyzes methodology, novelty, validation, and feasibility.",
-      status: "Agent",
-    },
-    {
-      label: "Commercial Reviewer",
-      detail: "Market, business model, GTM readiness, and scalability are scored.",
-      status: "Agent",
-    },
-    {
-      label: "Risk & Integrity Review",
-      detail: "Operational risks, unsupported claims, and AI-likelihood are checked.",
-      status: "Guardrail",
-    },
-    {
-      label: "Chair Agent Synthesis",
-      detail: "A final recommendation and shareable PDF report are generated.",
-      status: "Decision",
-    },
-  ];
-
-  return (
-    <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.24em] text-emerald-300">
-            Live workflow simulation
-          </p>
-          <h3 className="mt-2 text-2xl font-black text-white">
-            How Evalora reviews a proposal
-          </h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            A specialized Gemini-powered reviewer panel evaluates each proposal,
-            compares reviewer signals, and produces an institutional report.
-          </p>
-        </div>
-
-        <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-300">
-          Powered by {AI_STACK_LABEL}
-        </div>
-      </div>
-
-      <div className="mt-5 space-y-3">
-        {steps.map((step, index) => (
-          <div
-            key={step.label}
-            className={`group rounded-2xl border bg-slate-950 p-4 transition-all duration-500 ${
-              activeStep === index
-                ? "border-emerald-400/60 shadow-[0_0_30px_rgba(16,185,129,0.12)]"
-                : "border-slate-800 hover:border-emerald-500/30"
-            }`}
-          >
-            <div className="flex items-start gap-4">
-              <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-sm font-black text-emerald-300">
-                {index + 1}
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-bold text-white">{step.label}</p>
-                  <span className="rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    {step.status}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm leading-6 text-slate-500">
-                  {step.detail}
-                </p>
-              </div>
-
-              <div
-                className={`mt-2 h-2 w-2 shrink-0 rounded-full transition-all duration-300 ${
-                  activeStep === index
-                    ? "animate-pulse bg-emerald-300 shadow-[0_0_16px_rgba(110,231,183,0.9)] scale-125"
-                    : "bg-slate-600"
-                }`}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function LandingSalesPreview({ onRequestAccess }: { onRequestAccess: () => void }) {
-  const plans = [
-    {
-      name: "Starter",
-      price: "$29",
-      detail: "For individual founders and grant writers.",
-    },
-    {
-      name: "Team",
-      price: "$99",
-      detail: "For labs, accelerators, and proposal teams.",
-    },
-    {
-      name: "Institution",
-      price: "Custom",
-      detail: "White-label portals, quotas, and API access.",
-    },
-  ];
-
-  return (
-    <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.24em] text-cyan-300">
-            Sales demo ready
-          </p>
-          <h3 className="mt-2 text-2xl font-black text-white">
-            Evaluate proposals before the first upload.
-          </h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Use sample reports, pricing context, and access requests to turn the
-            demo into a lightweight SaaS acquisition flow.
-          </p>
-        </div>
-
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => window.open(SAMPLE_REPORT_URL, "_blank", "noopener,noreferrer")}
-            className="rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300 transition hover:bg-blue-500/20"
-          >
-            View Sample Report
-          </button>
-
-          <button
-            type="button"
-            onClick={onRequestAccess}
-            className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/20"
-          >
-            Request Access
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
-        {plans.map((plan) => (
-          <div
-            key={plan.name}
-            className="rounded-2xl border border-slate-800 bg-slate-950 p-4"
-          >
-            <p className="text-sm font-bold text-white">{plan.name}</p>
-            <p className="mt-2 text-2xl font-black text-white">{plan.price}</p>
-            <p className="mt-2 text-xs leading-5 text-slate-500">{plan.detail}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function WorkspaceQuotaCard({
-  used,
-  limit,
-}: {
-  used: number;
-  limit: number;
-}) {
-  const safeLimit = Math.max(limit, 1);
-  const percentage = Math.min(100, Math.round((used / safeLimit) * 100));
-  const remaining = Math.max(0, limit - used);
-
-  return (
-    <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-lg font-bold text-white">Workspace Quota</h3>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
-            Demo usage visibility for sales and client workspaces.
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-black text-emerald-300">
-          Demo
-        </div>
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950 p-4">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="text-3xl font-black text-white">
-              {used}
-              <span className="text-base text-slate-500"> / {limit}</span>
-            </p>
-            <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-slate-500">
-              analyses used
-            </p>
-          </div>
-
-          <p className="text-sm font-bold text-slate-300">
-            {remaining} remaining
-          </p>
-        </div>
-
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
-          <div
-            className="h-2 rounded-full bg-emerald-400 transition-all"
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
-          <p className="font-bold text-slate-300">Plan</p>
-          <p className="mt-1 text-slate-500">Demo Workspace</p>
-        </div>
-
-        <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
-          <p className="font-bold text-slate-300">Reset</p>
-          <p className="mt-1 text-slate-500">Monthly</p>
-        </div>
-      </div>
     </div>
   );
 }
@@ -2220,7 +1580,7 @@ function ReviewerInsightCard({
 
   return (
     <article
-      className={`premium-card-enter grid min-w-0 gap-5 rounded-3xl border bg-slate-900/70 p-5 shadow-xl transition hover:-translate-y-1 hover:shadow-2xl 2xl:grid-cols-[260px_1fr] ${styles.border} ${styles.glow}`}
+      className={`premium-card-enter grid min-w-0 gap-5 rounded-3xl border bg-slate-900/70 p-5 shadow-xl transition hover:-translate-y-1 hover:shadow-2xl xl:grid-cols-[260px_1fr] ${styles.border} ${styles.glow}`}
     >
       <div className="min-w-0">
         <div className="flex items-start gap-4">
@@ -2338,7 +1698,7 @@ function ReviewerAgreement({
 
       <p className="mt-2 text-sm text-slate-400">Alignment across reviewer perspectives.</p>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Scientific" value={scientific?.score ?? "-"} />
         <MetricCard title="Commercial" value={commercial?.score ?? "-"} />
         <MetricCard title="Risk" value={risk?.score ?? "-"} />
@@ -2929,133 +2289,3 @@ async function downloadBlobResponse(response: Response, filename: string) {
 }
 
 export default App;
-
-
-function RequestAccessModal({
-  open,
-  email,
-  organization,
-  useCase,
-  expectedVolume,
-  submitting,
-  onEmailChange,
-  onOrganizationChange,
-  onUseCaseChange,
-  onExpectedVolumeChange,
-  onClose,
-  onSubmit,
-}: {
-  open: boolean;
-  email: string;
-  organization: string;
-  useCase: string;
-  expectedVolume: string;
-  submitting: boolean;
-  onEmailChange: (value: string) => void;
-  onOrganizationChange: (value: string) => void;
-  onUseCaseChange: (value: string) => void;
-  onExpectedVolumeChange: (value: string) => void;
-  onClose: () => void;
-  onSubmit: () => void;
-}) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 backdrop-blur">
-      <div className="w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.24em] text-emerald-300">
-              Evalora Access
-            </p>
-            <h2 className="mt-2 text-3xl font-black text-white">
-              Request demo workspace
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              Share your details and use case. Evalora will save the request for follow-up.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-slate-800"
-          >
-            Close
-          </button>
-        </div>
-
-        <div className="mt-6 grid gap-4">
-          <label className="block">
-            <span className="text-sm font-semibold text-slate-300">
-              Email address
-            </span>
-            <input
-              value={email}
-              onChange={(event) => onEmailChange(event.target.value)}
-              placeholder="you@organization.com"
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-semibold text-slate-300">
-              Organization / workspace
-            </span>
-            <input
-              value={organization}
-              onChange={(event) => onOrganizationChange(event.target.value)}
-              placeholder="University, accelerator, fund, company..."
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-semibold text-slate-300">
-              Use case
-            </span>
-            <textarea
-              value={useCase}
-              onChange={(event) => onUseCaseChange(event.target.value)}
-              rows={3}
-              placeholder="Grant proposal review, accelerator screening, investment diligence..."
-              className="mt-2 w-full resize-none rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-semibold text-slate-300">
-              Expected monthly proposal volume
-            </span>
-            <input
-              value={expectedVolume}
-              onChange={(event) => onExpectedVolumeChange(event.target.value)}
-              placeholder="10"
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400"
-            />
-          </label>
-        </div>
-
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-2xl border border-slate-700 px-5 py-3 font-bold text-slate-300 transition hover:bg-slate-800"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={submitting}
-            className="rounded-2xl bg-emerald-400 px-5 py-3 font-black text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {submitting ? "Submitting..." : "Submit request"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-

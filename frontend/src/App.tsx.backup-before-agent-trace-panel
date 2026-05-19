@@ -1142,10 +1142,6 @@ function App() {
               )}
             </div>
 
-            {effectiveTelemetry?.agent_traces?.length > 0 && (
-              <AgentTracePanel telemetry={effectiveTelemetry} />
-            )}
-
             {!data && !loading && (
               <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-950 p-10 text-center text-slate-500">
                 
@@ -1354,80 +1350,6 @@ function App() {
         </section>
       </main>
     </div>
-  );
-}
-
-
-function AgentTracePanel({ telemetry }: { telemetry: any }) {
-  const traces = telemetry?.agent_traces || [];
-  const traceId = telemetry?.trace_id || "not-available";
-
-  function downloadTraceJson() {
-    const blob = new Blob([JSON.stringify(telemetry, null, 2)], {
-      type: "application/json",
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = `evalora-agent-trace-${traceId}.json`;
-    link.click();
-
-    URL.revokeObjectURL(url);
-  }
-
-  return (
-    <section className="mt-6 rounded-3xl border border-slate-800 bg-slate-950 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.24em] text-emerald-300">
-            Agent Trace
-          </p>
-          <h3 className="mt-2 text-2xl font-black text-white">
-            Observable reviewer runtime
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Trace ID: <span className="font-mono text-slate-300">{traceId}</span>
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={downloadTraceJson}
-          className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/20"
-        >
-          Download Trace JSON
-        </button>
-      </div>
-
-      <div className="mt-5 grid gap-3">
-        {traces.map((trace: any, index: number) => (
-          <div
-            key={`${trace.agent}-${index}`}
-            className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-bold text-white">{trace.agent}</p>
-                <p className="mt-1 text-xs uppercase tracking-widest text-slate-500">
-                  {trace.status || "completed"}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 font-bold text-blue-300">
-                  confidence {trace.confidence ?? "-"}
-                </span>
-                <span className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 font-bold text-emerald-300">
-                  {trace.duration_ms ?? "-"} ms
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
 
