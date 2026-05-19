@@ -401,7 +401,9 @@ async def websocket_analyze(websocket: WebSocket):
 # Public sales/demo access request endpoint
 # ---------------------------------------------------------------------
 from pydantic import BaseModel
+from fastapi import Header
 from services.request_access_store import create_access_request
+from services.quota_store import get_workspace_quota
 
 
 class AccessRequestPayload(BaseModel):
@@ -436,4 +438,29 @@ async def request_access(payload: AccessRequestPayload):
         from fastapi import HTTPException
 
         raise HTTPException(status_code=500, detail=f"Request access failed: {exc}")
+
+
+# ---------------------------------------------------------------------
+# Workspace quota endpoint
+# ---------------------------------------------------------------------
+@app.get("/quota")
+async def get_quota(
+    x_revieweros_user_id: str | None = Header(default=None),
+):
+    try:
+        user_id = (x_revieweros_user_id or "demo").strip() or "demo"
+
+        quota = get_workspace_quota(user_id=user_id)
+
+        return {
+            "ok": True,
+            "quota": quota,
+        }
+    except Exception as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load workspace quota: {exc}",
+        )
 
