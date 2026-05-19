@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import "./App.css";
 
 type AuthSession = {
@@ -1301,6 +1302,7 @@ function App() {
           <PdfPreviewPanel file={file} filePreviewUrl={filePreviewUrl} />
         </section>
       </main>
+      <SpeedInsights />
     </div>
   );
 }
@@ -2828,4 +2830,3 @@ function RequestAccessModal({
     </div>
   );
 }
-
