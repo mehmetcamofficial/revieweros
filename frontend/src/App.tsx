@@ -119,7 +119,42 @@ function App() {
     const formData = new FormData();
     formData.append("file", selectedFile);
 
+    setEvents([
+      {
+        type: "session_started",
+        agent_label: "ReviewerOS",
+        message: "ReviewerOS standard document analysis initialized.",
+      },
+      {
+        type: "agent_started",
+        agent_label: "Scientific Reviewer",
+        message: "Scientific Reviewer analyzing extracted document text.",
+      },
+      {
+        type: "agent_started",
+        agent_label: "Commercial Reviewer",
+        message: "Commercial Reviewer evaluating market and commercialization readiness.",
+      },
+      {
+        type: "agent_started",
+        agent_label: "Risk Reviewer",
+        message: "Risk Reviewer validating operational, compliance, and execution risks.",
+      },
+      {
+        type: "agent_started",
+        agent_label: "Integrity Reviewer",
+        message: "Integrity Reviewer scanning ethical, evidence, and AI-likelihood signals.",
+      },
+      {
+        type: "chair_started",
+        agent_label: "Chair Agent",
+        message: "Chair Agent preparing synthesis.",
+      },
+    ]);
+
     try {
+      const startTime = performance.now();
+
       const response = await fetch(`${API_URL}/analyze`, {
         method: "POST",
         body: formData,
@@ -127,25 +162,97 @@ function App() {
 
       const json = await response.json();
 
+      const endTime = performance.now();
+      const latencySeconds = Number(((endTime - startTime) / 1000).toFixed(2));
+
       if (json.error) {
         alert(json.error);
         setData(null);
+        setEvents([
+          {
+            type: "error",
+            agent_label: "ReviewerOS",
+            message: json.error,
+          },
+        ]);
         return;
       }
 
       const normalized = normalizeResult(json.result || {});
 
+      const estimatedTokens = estimateTokensFromResult(normalized);
+      const estimatedCost = estimateGeminiFlashLiteCost(estimatedTokens);
+
+      const fallbackTelemetry = {
+        model: normalized.telemetry?.model || "gemini-2.5-flash-lite",
+        tokens: normalized.telemetry?.tokens || estimatedTokens,
+        cost_usd: normalized.telemetry?.cost_usd || estimatedCost,
+        latency_seconds: normalized.telemetry?.latency_seconds || latencySeconds,
+      };
+
+      const normalizedWithTelemetry = {
+        ...normalized,
+        telemetry: normalized.telemetry || fallbackTelemetry,
+      };
+
       setData({
         job_id: json.job_id || crypto.randomUUID(),
         file_name: json.file_name || selectedFile.name,
         report_path: json.report_path,
-        result: normalized,
+        result: normalizedWithTelemetry,
       });
 
-      setTelemetry(normalized.telemetry || null);
+      setTelemetry(normalized.telemetry || fallbackTelemetry);
+
+      setEvents([
+        {
+          type: "session_started",
+          agent_label: "ReviewerOS",
+          message: "ReviewerOS standard document analysis initialized.",
+        },
+        {
+          type: "agent_completed",
+          agent_label: "Scientific Reviewer",
+          message: "Scientific Reviewer completed document analysis.",
+        },
+        {
+          type: "agent_completed",
+          agent_label: "Commercial Reviewer",
+          message: "Commercial Reviewer completed commercialization review.",
+        },
+        {
+          type: "agent_completed",
+          agent_label: "Risk Reviewer",
+          message: "Risk Reviewer completed risk assessment.",
+        },
+        {
+          type: "agent_completed",
+          agent_label: "Integrity Reviewer",
+          message: "Integrity Reviewer completed integrity review.",
+        },
+        {
+          type: "chair_completed",
+          agent_label: "Chair Agent",
+          message: "Chair Agent finalized reviewer consensus.",
+        },
+        {
+          type: "session_completed",
+          agent_label: "ReviewerOS",
+          message: "ReviewerOS standard document analysis completed.",
+          telemetry: fallbackTelemetry,
+        },
+      ]);
     } catch (error) {
       console.error(error);
       alert("Analysis failed.");
+
+      setEvents([
+        {
+          type: "error",
+          agent_label: "ReviewerOS",
+          message: "Analysis failed.",
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -248,7 +355,7 @@ function App() {
               <input
                 id="file-upload"
                 type="file"
-                accept=".txt,.pdf,.docx"
+                accept=".txt,.pdf,.docx,.md"
                 onChange={(event) => setFile(event.target.files?.[0] || null)}
                 className="hidden"
               />
@@ -263,7 +370,10 @@ function App() {
               <p className="mt-4 text-slate-400">
                 {file ? (
                   <>
-                    Selected: <span className="font-semibold text-white">{file.name}</span>
+                    Selected:{" "}
+                    <span className="font-semibold text-white">
+                      {shortFileName(file.name)}
+                    </span>
                   </>
                 ) : (
                   "Henüz dosya seçilmedi"
@@ -276,12 +386,10 @@ function App() {
               disabled={!file || loading}
               className="mt-6 w-full rounded-2xl bg-white px-5 py-3 text-lg font-bold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {loading ? "Streaming Review..." : "Analyze with ReviewerOS"}
+              {loading ? "Analyzing with ReviewerOS..." : "Analyze with ReviewerOS"}
             </button>
 
-            {(loading || data || events.length > 0) && (
-              <AgentTimeline events={events} />
-            )}
+            {(loading || data || events.length > 0) && <AgentTimeline events={events} />}
           </aside>
 
           <section className="min-w-0 rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
@@ -717,10 +825,28 @@ function TelemetryBar({ telemetry, loading, events }: { telemetry: any; loading:
   return (
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
       <MetricCard title="Model" value={telemetry?.model || "gemini-2.5-flash-lite"} />
-      <MetricCard title="Tokens" value={telemetry?.tokens ? telemetry.tokens.toLocaleString() : "-"} />
-      <MetricCard title="Estimated Cost" value={telemetry?.cost_usd ? `$${telemetry.cost_usd}` : "-"} />
-      <MetricCard title="Latency" value={telemetry?.latency_seconds ? `${telemetry.latency_seconds}s` : loading ? "Streaming..." : "-"} />
-      <MetricCard title="Agent Status" value={loading ? `${activeAgents} active` : completedAgents > 0 ? `${completedAgents}/${totalAgents} completed` : "-"} />
+      <MetricCard title="Tokens" value={formatTelemetryValue(telemetry?.tokens)} />
+      <MetricCard title="Estimated Cost" value={formatCost(telemetry?.cost_usd)} />
+      <MetricCard
+        title="Latency"
+        value={
+          telemetry?.latency_seconds
+            ? `${telemetry.latency_seconds}s`
+            : loading
+              ? "Analyzing..."
+              : "-"
+        }
+      />
+      <MetricCard
+        title="Agent Status"
+        value={
+          loading
+            ? `${activeAgents} active`
+            : completedAgents > 0
+              ? `${completedAgents}/${totalAgents} completed`
+              : "-"
+        }
+      />
     </section>
   );
 }
@@ -738,8 +864,28 @@ function AgentTimeline({ events }: { events: StreamEvent[] }) {
 
           return (
             <div key={step} className="flex items-center gap-3">
-              <div className={`h-5 w-5 shrink-0 rounded-full ${completed ? "bg-emerald-400" : failed ? "bg-yellow-400" : active ? "animate-pulse bg-cyan-400" : "bg-slate-700"}`} />
-              <span className={completed ? "text-white" : failed ? "text-yellow-200" : active ? "text-cyan-200" : "text-slate-400"}>
+              <div
+                className={`h-5 w-5 shrink-0 rounded-full ${
+                  completed
+                    ? "bg-emerald-400"
+                    : failed
+                      ? "bg-yellow-400"
+                      : active
+                        ? "animate-pulse bg-cyan-400"
+                        : "bg-slate-700"
+                }`}
+              />
+              <span
+                className={
+                  completed
+                    ? "text-white"
+                    : failed
+                      ? "text-yellow-200"
+                      : active
+                        ? "text-cyan-200"
+                        : "text-slate-400"
+                }
+              >
                 {step}
               </span>
             </div>
@@ -769,7 +915,10 @@ function LiveEventPanel({ events }: { events: StreamEvent[] }) {
         </div>
 
         <div className="h-3 overflow-hidden rounded-full bg-slate-800">
-          <div className="h-3 rounded-full bg-cyan-400 transition-all duration-700" style={{ width: `${progress}%` }} />
+          <div
+            className="h-3 rounded-full bg-cyan-400 transition-all duration-700"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       </div>
 
@@ -789,7 +938,15 @@ function LiveEventPanel({ events }: { events: StreamEvent[] }) {
           {events.map((event, index) => (
             <div key={`${event.type}-${index}`} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
               <div className="flex items-start gap-3">
-                <div className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${event.type.includes("failed") ? "bg-yellow-400" : event.type.includes("completed") ? "bg-emerald-400" : "animate-pulse bg-cyan-400"}`} />
+                <div
+                  className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                    event.type.includes("failed") || event.type === "error"
+                      ? "bg-yellow-400"
+                      : event.type.includes("completed")
+                        ? "bg-emerald-400"
+                        : "animate-pulse bg-cyan-400"
+                  }`}
+                />
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-3">
@@ -827,7 +984,12 @@ function getCompletedAgents(events: StreamEvent[]) {
   const completed = new Set<string>();
 
   events.forEach((event) => {
-    if ((event.type === "agent_completed" || event.type === "agent_failed" || event.type === "chair_completed") && event.agent_label) {
+    if (
+      (event.type === "agent_completed" ||
+        event.type === "agent_failed" ||
+        event.type === "chair_completed") &&
+      event.agent_label
+    ) {
       completed.add(event.agent_label);
     }
   });
@@ -839,12 +1001,18 @@ function isAgentCompleted(events: StreamEvent[], agentLabel: string) {
   return events.some(
     (event) =>
       event.agent_label === agentLabel &&
-      (event.type === "agent_completed" || event.type === "agent_failed" || event.type === "chair_completed")
+      (event.type === "agent_completed" ||
+        event.type === "agent_failed" ||
+        event.type === "chair_completed")
   );
 }
 
 function isAgentFailed(events: StreamEvent[], agentLabel: string) {
-  return events.some((event) => event.agent_label === agentLabel && event.type === "agent_failed");
+  return events.some(
+    (event) =>
+      event.agent_label === agentLabel &&
+      (event.type === "agent_failed" || event.type === "error")
+  );
 }
 
 function isAgentActive(events: StreamEvent[], agentLabel: string) {
@@ -860,12 +1028,15 @@ function isAgentActive(events: StreamEvent[], agentLabel: string) {
 }
 
 function humanizeEvent(event: StreamEvent) {
+  if (event.message) return event.message;
+
   if (event.type === "session_started") return "ReviewerOS orchestration session initialized.";
   if (event.type === "chair_started") return "Chair Agent synthesizing reviewer consensus.";
   if (event.type === "agent_completed") return `${event.agent_label} completed review successfully.`;
   if (event.type === "agent_failed") return `${event.agent_label} failed, but ReviewerOS generated a safe fallback output and continued orchestration.`;
   if (event.type === "chair_completed") return "Chair Agent finalized executive recommendation.";
   if (event.type === "session_completed") return "ReviewerOS orchestration completed.";
+  if (event.type === "error") return event.error || "Analysis failed.";
 
   if (event.type === "agent_started") {
     switch (event.agent_label) {
@@ -880,7 +1051,7 @@ function humanizeEvent(event: StreamEvent) {
     }
   }
 
-  return event.message || "Processing.";
+  return "Processing.";
 }
 
 function riskColor(risk: any): "red" | "green" | "blue" | "yellow" {
@@ -935,6 +1106,48 @@ function reviewerAccentStyles(accent: "blue" | "emerald" | "red" | "purple") {
   };
 
   return styles[accent];
+}
+
+function shortFileName(fileName: string, maxLength = 72) {
+  if (fileName.length <= maxLength) return fileName;
+
+  const dotIndex = fileName.lastIndexOf(".");
+  const extension = dotIndex !== -1 ? fileName.slice(dotIndex) : "";
+  const baseName = dotIndex !== -1 ? fileName.slice(0, dotIndex) : fileName;
+
+  const trimmedBase = baseName.slice(0, Math.max(12, maxLength - extension.length - 3));
+
+  return `${trimmedBase}...${extension}`;
+}
+
+function formatTelemetryValue(value: any) {
+  if (value === undefined || value === null || value === "") return "-";
+  if (typeof value === "number") return value.toLocaleString();
+  return String(value);
+}
+
+function formatCost(value: any) {
+  if (value === undefined || value === null || value === "") return "-";
+  if (value === "-") return "-";
+
+  const numeric = Number(value);
+
+  if (Number.isNaN(numeric)) return String(value);
+
+  return `$${numeric.toFixed(6)}`;
+}
+
+function estimateTokensFromResult(result: any) {
+  const text = JSON.stringify(result || "");
+  const estimated = Math.ceil(text.length / 4);
+
+  return Math.max(estimated, 1000);
+}
+
+function estimateGeminiFlashLiteCost(tokens: number) {
+  const estimatedUsd = (tokens / 1_000_000) * 0.35;
+
+  return Number(estimatedUsd.toFixed(6));
 }
 
 export default App;
