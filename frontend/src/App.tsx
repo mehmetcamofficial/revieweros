@@ -102,6 +102,12 @@ function App() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedHistoryJobId, setSelectedHistoryJobId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [requestEmail, setRequestEmail] = useState("");
+  const [requestOrganization, setRequestOrganization] = useState("");
+  const [requestUseCase, setRequestUseCase] = useState("Grant proposal review demo");
+  const [requestExpectedVolume, setRequestExpectedVolume] = useState("10");
 
   const finalDecisionRef = useRef<HTMLElement | null>(null);
 
@@ -141,6 +147,63 @@ function App() {
     window.setTimeout(() => {
       setToast(null);
     }, 2200);
+  }
+
+  async function handleRequestAccessSubmit() {
+    const email = requestEmail.trim();
+    const organization = requestOrganization.trim();
+    const useCase = requestUseCase.trim();
+    const expectedVolume = requestExpectedVolume.trim();
+
+    if (!email || !email.includes("@")) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
+    if (!organization) {
+      alert("Please enter your organization or workspace name.");
+      return;
+    }
+
+    if (!useCase) {
+      alert("Please describe your use case.");
+      return;
+    }
+
+    try {
+      setRequestSubmitting(true);
+
+      const response = await fetch(REQUEST_ACCESS_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          organization,
+          use_case: useCase,
+          expected_volume: expectedVolume,
+          source: "evalora-web",
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "Request access failed.");
+      }
+
+      setRequestModalOpen(false);
+      setRequestEmail("");
+      setRequestOrganization("");
+      setRequestUseCase("Grant proposal review demo");
+      setRequestExpectedVolume("10");
+      showToast("Access request received ✓");
+    } catch (error: any) {
+      alert(error?.message || "Request access failed.");
+    } finally {
+      setRequestSubmitting(false);
+    }
   }
 
   async function handleLogin(userId: string, accessCode: string) {
@@ -759,6 +822,21 @@ function App() {
         </div>
       )}
 
+      <RequestAccessModal
+        open={requestModalOpen}
+        email={requestEmail}
+        organization={requestOrganization}
+        useCase={requestUseCase}
+        expectedVolume={requestExpectedVolume}
+        submitting={requestSubmitting}
+        onEmailChange={setRequestEmail}
+        onOrganizationChange={setRequestOrganization}
+        onUseCaseChange={setRequestUseCase}
+        onExpectedVolumeChange={setRequestExpectedVolume}
+        onClose={() => setRequestModalOpen(false)}
+        onSubmit={handleRequestAccessSubmit}
+      />
+
       <header className="border-b border-slate-800/80 bg-slate-950/95 px-6 py-6 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-[1700px] flex-col gap-5 overflow-hidden md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
@@ -1073,7 +1151,7 @@ function App() {
 
         <button
           type="button"
-          onClick={requestAccessFlow}
+          onClick={() => setRequestModalOpen(true)}
           className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/20"
         >
           Request Access
@@ -1338,9 +1416,86 @@ function LandingLogin({
 }) {
   const [userId, setUserId] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [requestEmail, setRequestEmail] = useState("");
+  const [requestOrganization, setRequestOrganization] = useState("");
+  const [requestUseCase, setRequestUseCase] = useState("Grant proposal review demo");
+  const [requestExpectedVolume, setRequestExpectedVolume] = useState("10");
+
+  async function handleRequestAccessSubmit() {
+    const email = requestEmail.trim();
+    const organization = requestOrganization.trim();
+    const useCase = requestUseCase.trim();
+    const expectedVolume = requestExpectedVolume.trim();
+
+    if (!email || !email.includes("@")) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
+    if (!organization) {
+      alert("Please enter your organization or workspace name.");
+      return;
+    }
+
+    if (!useCase) {
+      alert("Please describe your use case.");
+      return;
+    }
+
+    try {
+      setRequestSubmitting(true);
+
+      const response = await fetch(REQUEST_ACCESS_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          organization,
+          use_case: useCase,
+          expected_volume: expectedVolume,
+          source: "evalora-landing",
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "Request access failed.");
+      }
+
+      setRequestModalOpen(false);
+      setRequestEmail("");
+      setRequestOrganization("");
+      setRequestUseCase("Grant proposal review demo");
+      setRequestExpectedVolume("10");
+      alert("Access request received. Evalora will follow up with demo access.");
+    } catch (error: any) {
+      alert(error?.message || "Request access failed.");
+    } finally {
+      setRequestSubmitting(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+      <RequestAccessModal
+        open={requestModalOpen}
+        email={requestEmail}
+        organization={requestOrganization}
+        useCase={requestUseCase}
+        expectedVolume={requestExpectedVolume}
+        submitting={requestSubmitting}
+        onEmailChange={setRequestEmail}
+        onOrganizationChange={setRequestOrganization}
+        onUseCaseChange={setRequestUseCase}
+        onExpectedVolumeChange={setRequestExpectedVolume}
+        onClose={() => setRequestModalOpen(false)}
+        onSubmit={handleRequestAccessSubmit}
+      />
       <header className="border-b border-slate-800/80 px-6 py-6 md:px-8">
         <div className="mx-auto flex max-w-[1700px] items-center justify-between">
           <div>
@@ -1394,7 +1549,7 @@ function LandingLogin({
               <LandingFeature title="Integrity Reviewer" text="Unsupported claims, AI-likelihood, and data governance." />
             </div>
           </div>
-          <LandingSalesPreview />
+          <LandingSalesPreview onRequestAccess={() => setRequestModalOpen(true)} />
         </section>
 
         <section className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl">
@@ -1452,49 +1607,7 @@ function LandingLogin({
   );
 }
 
-async function requestAccessFlow() {
-  const email = window.prompt("Your email address:");
-
-  if (!email) return;
-
-  const organization = window.prompt("Organization / workspace name:");
-
-  if (!organization) return;
-
-  const useCase = window.prompt("Use case:", "Grant proposal review demo");
-
-  if (!useCase) return;
-
-  const expectedVolume = window.prompt("Expected monthly proposal volume:", "10");
-
-  try {
-    const response = await fetch(REQUEST_ACCESS_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        organization,
-        use_case: useCase,
-        expected_volume: expectedVolume || "",
-        source: "evalora-web",
-      }),
-    });
-
-    const json = await response.json();
-
-    if (!response.ok || !json.ok) {
-      throw new Error(json.detail || "Request failed.");
-    }
-
-    alert("Request received. Evalora will follow up with demo access.");
-  } catch (error: any) {
-    alert(error?.message || "Request access failed.");
-  }
-}
-
-function LandingSalesPreview() {
+function LandingSalesPreview({ onRequestAccess }: { onRequestAccess: () => void }) {
   const plans = [
     {
       name: "Starter",
@@ -1540,7 +1653,7 @@ function LandingSalesPreview() {
 
           <button
             type="button"
-            onClick={requestAccessFlow}
+            onClick={onRequestAccess}
             className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/20"
           >
             Request Access
@@ -2586,3 +2699,133 @@ async function downloadBlobResponse(response: Response, filename: string) {
 }
 
 export default App;
+
+
+function RequestAccessModal({
+  open,
+  email,
+  organization,
+  useCase,
+  expectedVolume,
+  submitting,
+  onEmailChange,
+  onOrganizationChange,
+  onUseCaseChange,
+  onExpectedVolumeChange,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  email: string;
+  organization: string;
+  useCase: string;
+  expectedVolume: string;
+  submitting: boolean;
+  onEmailChange: (value: string) => void;
+  onOrganizationChange: (value: string) => void;
+  onUseCaseChange: (value: string) => void;
+  onExpectedVolumeChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 backdrop-blur">
+      <div className="w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.24em] text-emerald-300">
+              Evalora Access
+            </p>
+            <h2 className="mt-2 text-3xl font-black text-white">
+              Request demo workspace
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Share your details and use case. Evalora will save the request for follow-up.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-slate-800"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="mt-6 grid gap-4">
+          <label className="block">
+            <span className="text-sm font-semibold text-slate-300">
+              Email address
+            </span>
+            <input
+              value={email}
+              onChange={(event) => onEmailChange(event.target.value)}
+              placeholder="you@organization.com"
+              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-semibold text-slate-300">
+              Organization / workspace
+            </span>
+            <input
+              value={organization}
+              onChange={(event) => onOrganizationChange(event.target.value)}
+              placeholder="University, accelerator, fund, company..."
+              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-semibold text-slate-300">
+              Use case
+            </span>
+            <textarea
+              value={useCase}
+              onChange={(event) => onUseCaseChange(event.target.value)}
+              rows={3}
+              placeholder="Grant proposal review, accelerator screening, investment diligence..."
+              className="mt-2 w-full resize-none rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-semibold text-slate-300">
+              Expected monthly proposal volume
+            </span>
+            <input
+              value={expectedVolume}
+              onChange={(event) => onExpectedVolumeChange(event.target.value)}
+              placeholder="10"
+              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400"
+            />
+          </label>
+        </div>
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-2xl border border-slate-700 px-5 py-3 font-bold text-slate-300 transition hover:bg-slate-800"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={submitting}
+            className="rounded-2xl bg-emerald-400 px-5 py-3 font-black text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitting ? "Submitting..." : "Submit request"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
