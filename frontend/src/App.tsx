@@ -72,6 +72,19 @@ function App() {
 
   useEffect(() => {
     loadRecentAnalyses();
+    bootSharedReport();
+
+    const handleRouteChange = () => {
+      bootSharedReport(true);
+    };
+
+    window.addEventListener("popstate", handleRouteChange);
+    window.addEventListener("hashchange", handleRouteChange);
+
+    return () => {
+      window.removeEventListener("popstate", handleRouteChange);
+      window.removeEventListener("hashchange", handleRouteChange);
+    };
   }, []);
 
   function showToast(message: string) {
@@ -98,6 +111,27 @@ function App() {
     }
   }
 
+  async function bootSharedReport(scroll = false) {
+    const jobId = getReportJobIdFromPath();
+
+    if (!jobId) return;
+
+    setLoading(true);
+    setData(null);
+    setTelemetry(null);
+    setSelectedHistoryJobId(jobId);
+
+    try {
+      await loadSavedAnalysis(jobId, {
+        pushUrl: false,
+        scroll,
+        toast: "Shareable report loaded ✓",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function analyzeFile() {
     if (!file) return;
 
@@ -106,6 +140,14 @@ function App() {
     setEvents([]);
     setTelemetry(null);
     setSelectedHistoryJobId(null);
+
+    if (
+      window.location.pathname.startsWith("/report/") ||
+      window.location.search.includes("report=") ||
+      window.location.hash.includes("report=")
+    ) {
+      window.history.pushState({}, "", "/");
+    }
 
     if (file.name.toLowerCase().endsWith(".txt")) {
       await analyzeWithWebSocket(file);
@@ -401,13 +443,25 @@ function App() {
     }
   }
 
-  async function loadSavedAnalysis(jobId: string) {
+  async function loadSavedAnalysis(
+    jobId: string,
+    options: {
+      pushUrl?: boolean;
+      scroll?: boolean;
+      toast?: string;
+    } = {}
+  ) {
+    const { pushUrl = true, scroll = true, toast = "Loaded from history ✓" } = options;
+
     try {
       const response = await fetch(`${API_URL}/analyses/${jobId}`);
       const json = await response.json();
 
       if (json.error || !json.result) {
-        alert(json.error || "Saved analysis could not be loaded.");
+        alert(json.error || `Saved analysis could not be loaded for report ID: ${jobId}`);
+        setData(null);
+        setTelemetry(null);
+        setSelectedHistoryJobId(null);
         return;
       }
 
@@ -456,17 +510,40 @@ function App() {
         },
       ]);
 
-      showToast("Loaded from history ✓");
+      if (pushUrl) {
+        window.history.pushState({}, "", `/#report=${encodeURIComponent(jobId)}`);
+      }
 
-      window.setTimeout(() => {
-        finalDecisionRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 100);
+      showToast(toast);
+
+      if (scroll) {
+        window.setTimeout(() => {
+          finalDecisionRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }, 100);
+      }
     } catch (error) {
       console.error(error);
       alert("Failed to load saved analysis.");
+    }
+  }
+
+  async function shareReport(jobId?: string | null) {
+    if (!jobId) {
+      alert("No report is available to share yet.");
+      return;
+    }
+
+    const shareUrl = `${API_URL}/analyses/${encodeURIComponent(jobId)}/report`;
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showToast("PDF report link copied ✓");
+    } catch (error) {
+      console.error(error);
+      window.prompt("Copy this PDF report link:", shareUrl);
     }
   }
 
@@ -581,8 +658,15 @@ function App() {
               loading={historyLoading}
               selectedJobId={selectedHistoryJobId}
               onRefresh={loadRecentAnalyses}
-              onLoad={loadSavedAnalysis}
+              onLoad={(jobId) =>
+                loadSavedAnalysis(jobId, {
+                  pushUrl: true,
+                  scroll: true,
+                  toast: "Loaded from history ✓",
+                })
+              }
               onDownload={downloadSavedReport}
+              onShare={shareReport}
             />
           </aside>
 
@@ -591,21 +675,38 @@ function App() {
             className="min-w-0 rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl scroll-mt-8"
           >
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <h2 className="text-2xl font-bold">Final Decision</h2>
+              <div>
+                <h2 className="text-2xl font-bold">Final Decision</h2>
+
+                {data && (
+                  <p className="mt-1 max-w-2xl truncate text-xs text-slate-500">
+                    Report ID: {data.job_id}
+                  </p>
+                )}
+              </div>
 
               {data && (
-                <button
-                  onClick={downloadReport}
-                  className="w-fit rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2 font-semibold text-blue-300 transition hover:bg-blue-500/20"
-                >
-                  Download PDF Report
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => shareReport(data.job_id)}
+                    className="w-fit rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
+                  >
+                    Share Report
+                  </button>
+
+                  <button
+                    onClick={downloadReport}
+                    className="w-fit rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2 font-semibold text-blue-300 transition hover:bg-blue-500/20"
+                  >
+                    Download PDF Report
+                  </button>
+                </div>
               )}
             </div>
 
             {!data && !loading && (
               <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-950 p-10 text-center text-slate-500">
-                Upload an application to generate a structured AI reviewer report.
+                Upload an application or load a saved analysis to generate a structured AI reviewer report.
               </div>
             )}
 
@@ -674,6 +775,7 @@ function RecentAnalysesPanel({
   onRefresh,
   onLoad,
   onDownload,
+  onShare,
 }: {
   items: RecentAnalysis[];
   loading: boolean;
@@ -681,6 +783,7 @@ function RecentAnalysesPanel({
   onRefresh: () => void;
   onLoad: (jobId: string) => void;
   onDownload: (jobId: string) => void;
+  onShare: (jobId: string) => void;
 }) {
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl">
@@ -755,10 +858,10 @@ function RecentAnalysesPanel({
                 />
               </div>
 
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 grid grid-cols-3 gap-2">
                 <button
                   onClick={() => onLoad(item.job_id)}
-                  className={`flex-1 rounded-xl px-3 py-2 text-xs font-bold transition ${
+                  className={`rounded-xl px-3 py-2 text-xs font-bold transition ${
                     selected
                       ? "bg-emerald-400 text-slate-950 hover:bg-emerald-300"
                       : "bg-white text-slate-950 hover:bg-slate-200"
@@ -768,8 +871,15 @@ function RecentAnalysesPanel({
                 </button>
 
                 <button
+                  onClick={() => onShare(item.job_id)}
+                  className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-300 transition hover:bg-emerald-500/20"
+                >
+                  Share
+                </button>
+
+                <button
                   onClick={() => onDownload(item.job_id)}
-                  className="flex-1 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-300 transition hover:bg-blue-500/20"
+                  className="rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-300 transition hover:bg-blue-500/20"
                 >
                   PDF
                 </button>
@@ -968,9 +1078,7 @@ function ReviewerMetricBlock({
   return (
     <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-950 p-4">
       <div className="flex items-center justify-between gap-4">
-        <p className={`whitespace-nowrap text-sm font-semibold ${styles.text}`}>
-          {label}
-        </p>
+        <p className={`whitespace-nowrap text-sm font-semibold ${styles.text}`}>{label}</p>
 
         <p className="shrink-0 text-right text-2xl font-black text-white">
           {String(value)}
@@ -1138,7 +1246,15 @@ function normalizeChair(chair: any) {
   };
 }
 
-function TelemetryBar({ telemetry, loading, events }: { telemetry: any; loading: boolean; events: StreamEvent[] }) {
+function TelemetryBar({
+  telemetry,
+  loading,
+  events,
+}: {
+  telemetry: any;
+  loading: boolean;
+  events: StreamEvent[];
+}) {
   const completedAgents = getCompletedAgents(events);
   const totalAgents = 5;
   const activeAgents = loading ? Math.max(0, totalAgents - completedAgents) : 0;
@@ -1257,7 +1373,10 @@ function LiveEventPanel({ events }: { events: StreamEvent[] }) {
 
         <div className="reviewer-scroll max-h-[420px] space-y-3 overflow-y-auto font-mono text-sm">
           {events.map((event, index) => (
-            <div key={`${event.type}-${index}`} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <div
+              key={`${event.type}-${index}`}
+              className="rounded-xl border border-slate-800 bg-slate-900 p-4"
+            >
               <div className="flex items-start gap-3">
                 <div
                   className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
@@ -1271,7 +1390,9 @@ function LiveEventPanel({ events }: { events: StreamEvent[] }) {
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-xs text-slate-500">[{new Date().toLocaleTimeString()}]</span>
+                    <span className="text-xs text-slate-500">
+                      [{new Date().toLocaleTimeString()}]
+                    </span>
                     <span className="text-xs uppercase tracking-widest text-cyan-300">
                       {event.type.replaceAll("_", " ")}
                     </span>
@@ -1354,7 +1475,9 @@ function humanizeEvent(event: StreamEvent) {
   if (event.type === "session_started") return "ReviewerOS orchestration session initialized.";
   if (event.type === "chair_started") return "Chair Agent synthesizing reviewer consensus.";
   if (event.type === "agent_completed") return `${event.agent_label} completed review successfully.`;
-  if (event.type === "agent_failed") return `${event.agent_label} failed, but ReviewerOS generated a safe fallback output and continued orchestration.`;
+  if (event.type === "agent_failed") {
+    return `${event.agent_label} failed, but ReviewerOS generated a safe fallback output and continued orchestration.`;
+  }
   if (event.type === "chair_completed") return "Chair Agent finalized executive recommendation.";
   if (event.type === "session_completed") return "ReviewerOS orchestration completed.";
   if (event.type === "error") return event.error || "Analysis failed.";
@@ -1369,6 +1492,8 @@ function humanizeEvent(event: StreamEvent) {
         return "Risk Reviewer validating operational and compliance risks.";
       case "Integrity Reviewer":
         return "Integrity Reviewer scanning ethical and AI-generated patterns.";
+      default:
+        return "Reviewer agent started.";
     }
   }
 
@@ -1439,6 +1564,29 @@ function shortFileName(fileName: string, maxLength = 72) {
   const trimmedBase = baseName.slice(0, Math.max(12, maxLength - extension.length - 3));
 
   return `${trimmedBase}...${extension}`;
+}
+
+function getReportJobIdFromPath() {
+  const hash = window.location.hash || "";
+
+  if (hash.includes("report=")) {
+    const hashValue = hash.split("report=")[1]?.split("&")[0];
+
+    if (hashValue) {
+      return decodeURIComponent(hashValue.trim());
+    }
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const queryJobId = params.get("report");
+
+  if (queryJobId) {
+    return queryJobId.trim();
+  }
+
+  const pathMatch = window.location.pathname.match(/^\/report\/([^/]+)\/?$/);
+
+  return pathMatch?.[1]?.trim() || null;
 }
 
 function formatTelemetryValue(value: any) {
