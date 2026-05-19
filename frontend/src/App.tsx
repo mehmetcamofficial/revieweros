@@ -1142,6 +1142,8 @@ function App() {
               )}
             </div>
 
+            {loading && <LiveOrchestrationAnimation />}
+
             {effectiveTelemetry?.agent_traces?.length > 0 && (
               <AgentTracePanel telemetry={effectiveTelemetry} />
             )}
@@ -1357,6 +1359,70 @@ function App() {
   );
 }
 
+
+
+function LiveOrchestrationAnimation() {
+  const [activeStep, setActiveStep] = useState(0);
+
+  const steps = [
+    "Scientific Reviewer analyzing methodology",
+    "Commercial Reviewer evaluating market readiness",
+    "Risk Reviewer assessing execution risks",
+    "Integrity Reviewer checking evidence quality",
+    "Chair Agent synthesizing final decision",
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveStep((current) => (current + 1) % steps.length);
+    }, 1600);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <section className="mt-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.24em] text-emerald-300">
+            Live orchestration
+          </p>
+          <h3 className="mt-2 text-2xl font-black text-white">
+            Gemini reviewer agents are working
+          </h3>
+        </div>
+
+        <div className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-300">
+          Running
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3">
+        {steps.map((step, index) => (
+          <div
+            key={step}
+            className={`rounded-2xl border p-4 transition-all duration-500 ${
+              activeStep === index
+                ? "border-emerald-400/60 bg-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.14)]"
+                : "border-slate-800 bg-slate-950/70"
+            }`}
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className={`h-3 w-3 rounded-full ${
+                  activeStep === index
+                    ? "animate-pulse bg-emerald-300 shadow-[0_0_16px_rgba(110,231,183,0.9)]"
+                    : "bg-slate-600"
+                }`}
+              />
+              <p className="font-semibold text-slate-200">{step}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function AgentTracePanel({ telemetry }: { telemetry: any }) {
   const traces = telemetry?.agent_traces || [];
