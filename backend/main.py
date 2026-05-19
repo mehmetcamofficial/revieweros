@@ -226,6 +226,11 @@ async def analyze_application(
 ):
     job_id = str(uuid.uuid4())
 
+    try:
+        assert_workspace_quota_available(user_id)
+    except RuntimeError as error:
+        raise HTTPException(status_code=429, detail=str(error))
+
     if not file.filename:
         return {
             "job_id": job_id,
@@ -290,6 +295,11 @@ async def analyze_application(
         report_path=report_path,
         user_id=user_id,
     )
+
+    try:
+        increment_workspace_quota(user_id)
+    except RuntimeError as error:
+        raise HTTPException(status_code=429, detail=str(error))
 
     return {
         "job_id": job_id,
@@ -403,7 +413,11 @@ async def websocket_analyze(websocket: WebSocket):
 from pydantic import BaseModel
 from fastapi import Header
 from services.request_access_store import create_access_request
-from services.quota_store import get_workspace_quota
+from services.quota_store import (
+    get_workspace_quota,
+    assert_workspace_quota_available,
+    increment_workspace_quota,
+)
 
 
 class AccessRequestPayload(BaseModel):

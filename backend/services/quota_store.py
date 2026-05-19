@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Dict
+from google.cloud.firestore_v1 import transactional
 
 
 DEFAULT_MONTHLY_LIMIT = 25
@@ -122,7 +123,5 @@ def increment_workspace_quota(user_id: str, default_limit: int = DEFAULT_MONTHLY
             "remaining": max(0, limit - next_used),
             "allowed": next_used < limit,
         }
-
-    from google.cloud.firestore_v1 import transactional
 
     return _increment(transaction, doc_ref)
