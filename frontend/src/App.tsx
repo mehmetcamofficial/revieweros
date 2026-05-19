@@ -246,17 +246,29 @@ function App() {
 
             <div className="mt-6 rounded-2xl border border-dashed border-slate-700 bg-slate-950 p-6">
               <input
+                id="file-upload"
                 type="file"
                 accept=".txt,.pdf,.docx"
                 onChange={(event) => setFile(event.target.files?.[0] || null)}
-                className="block w-full text-sm file:mr-4 file:rounded-xl file:border-0 file:bg-white file:px-4 file:py-2 file:font-semibold file:text-slate-900"
+                className="hidden"
               />
 
-              {file && (
-                <p className="mt-4 text-slate-400">
-                  Selected: <span className="font-semibold text-white">{file.name}</span>
-                </p>
-              )}
+              <label
+                htmlFor="file-upload"
+                className="inline-flex w-fit cursor-pointer rounded-xl bg-white px-4 py-2 font-semibold text-slate-900 transition hover:bg-slate-200"
+              >
+                Dosya Seç
+              </label>
+
+              <p className="mt-4 text-slate-400">
+                {file ? (
+                  <>
+                    Selected: <span className="font-semibold text-white">{file.name}</span>
+                  </>
+                ) : (
+                  "Henüz dosya seçilmedi"
+                )}
+              </p>
             </div>
 
             <button

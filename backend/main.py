@@ -15,7 +15,7 @@ from services.streaming import run_streaming_review
 app = FastAPI(
     title="ReviewerOS API",
     version="0.1.0",
-    description="Autonomous AI reviewer panel API for grants, accelerators, and startup applications."
+    description="Autonomous AI reviewer panel API for grants, accelerators, and startup applications.",
 )
 
 app.add_middleware(
@@ -38,7 +38,7 @@ def root():
     return {
         "app": "ReviewerOS",
         "version": "0.1.0",
-        "message": "Autonomous AI reviewer panel API is running."
+        "message": "Autonomous AI reviewer panel API is running.",
     }
 
 
@@ -46,7 +46,7 @@ def root():
 def health():
     return {
         "status": "ok",
-        "service": "ReviewerOS API"
+        "service": "ReviewerOS API",
     }
 
 
@@ -57,14 +57,14 @@ async def analyze_application(file: UploadFile = File(...)):
     if not file.filename:
         return {
             "job_id": job_id,
-            "error": "No file name was provided."
+            "error": "No file name was provided.",
         }
 
     safe_filename = file.filename.replace(" ", "_")
     file_path = os.path.join(UPLOAD_DIR, f"{job_id}_{safe_filename}")
 
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
+    with open(file_path, "wb") as uploaded_file:
+        uploaded_file.write(await file.read())
 
     try:
         extracted_text = extract_text_from_file(file_path)
@@ -72,34 +72,34 @@ async def analyze_application(file: UploadFile = File(...)):
         return {
             "job_id": job_id,
             "file_name": file.filename,
-            "error": f"Failed to extract text from file: {str(error)}"
+            "error": f"Failed to extract text from file: {str(error)}",
         }
 
     if not extracted_text.strip():
         return {
             "job_id": job_id,
             "file_name": file.filename,
-            "error": "No text could be extracted from the uploaded file."
+            "error": "No text could be extracted from the uploaded file.",
         }
 
     try:
         result = run_reviewer_panel(
             application_text=extracted_text,
             file_name=file.filename,
-            job_id=job_id
+            job_id=job_id,
         )
     except Exception as error:
         return {
             "job_id": job_id,
             "file_name": file.filename,
-            "error": f"AI reviewer panel failed: {str(error)}"
+            "error": f"AI reviewer panel failed: {str(error)}",
         }
 
     try:
         report_path = generate_markdown_report(
             job_id=job_id,
             result=result,
-            output_dir=REPORT_DIR
+            output_dir=REPORT_DIR,
         )
     except Exception as error:
         report_path = None
@@ -109,7 +109,7 @@ async def analyze_application(file: UploadFile = File(...)):
         "job_id": job_id,
         "file_name": file.filename,
         "report_path": report_path,
-        "result": result
+        "result": result,
     }
 
 
@@ -117,22 +117,24 @@ async def analyze_application(file: UploadFile = File(...)):
 async def create_pdf_report(payload: dict):
     job_id = payload.get("job_id", str(uuid.uuid4()))
     result = payload.get("result")
+    file_name = payload.get("file_name", "application")
 
     if not result:
         return {
-            "error": "Missing result payload."
+            "error": "Missing result payload.",
         }
 
     pdf_path = generate_pdf_report(
         job_id=job_id,
         result=result,
-        output_dir=REPORT_DIR
+        output_dir=REPORT_DIR,
+        file_name=file_name,
     )
 
     return FileResponse(
         pdf_path,
         media_type="application/pdf",
-        filename=f"{job_id}-revieweros-executive-report.pdf"
+        filename=f"{job_id}-revieweros-executive-report.pdf",
     )
 
 
@@ -148,10 +150,12 @@ async def websocket_analyze(websocket: WebSocket):
         application_text = payload.get("application_text", "")
 
         if not application_text.strip():
-            await websocket.send_json({
-                "type": "error",
-                "message": "No application text was provided."
-            })
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": "No application text was provided.",
+                }
+            )
             await websocket.close()
             return
 
@@ -159,7 +163,7 @@ async def websocket_analyze(websocket: WebSocket):
             websocket=websocket,
             application_text=application_text,
             file_name=file_name,
-            job_id=job_id
+            job_id=job_id,
         )
 
         await websocket.close()
@@ -168,8 +172,10 @@ async def websocket_analyze(websocket: WebSocket):
         print("WebSocket disconnected.")
 
     except Exception as error:
-        await websocket.send_json({
-            "type": "error",
-            "message": str(error)
-        })
+        await websocket.send_json(
+            {
+                "type": "error",
+                "message": str(error),
+            }
+        )
         await websocket.close()
