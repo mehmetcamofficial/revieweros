@@ -703,6 +703,22 @@ function App() {
   const chair = result?.chair_decision || {};
   const effectiveTelemetry = telemetry || result?.telemetry || null;
 
+  const filePreviewUrl = useMemo(() => {
+    if (!file || !file.name.toLowerCase().endsWith(".pdf")) {
+      return null;
+    }
+
+    return URL.createObjectURL(file);
+  }, [file]);
+
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrl) {
+        URL.revokeObjectURL(filePreviewUrl);
+      }
+    };
+  }, [filePreviewUrl]);
+
   const agreement = useMemo(() => {
     if (!result) return "-";
 
@@ -740,7 +756,7 @@ function App() {
       )}
 
       <header className="border-b border-slate-800/80 bg-slate-950/95 px-6 py-6 backdrop-blur md:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 overflow-hidden md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex max-w-[1700px] flex-col gap-5 overflow-hidden md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
               <img
@@ -781,10 +797,10 @@ function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-8 md:px-8 md:py-10">
+      <main className="mx-auto max-w-[1700px] px-6 py-8 md:px-8 md:py-10">
         <TelemetryBar telemetry={effectiveTelemetry} loading={loading} events={events} />
 
-        <section className="mt-8 grid gap-6 xl:grid-cols-[380px_1fr]">
+        <section className="mt-8 grid gap-6 xl:grid-cols-[460px_minmax(0,1fr)]">
           <aside className="space-y-6">
             <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
               <h2 className="text-2xl font-bold">Upload Application</h2>
@@ -973,7 +989,7 @@ function App() {
               </div>
 
               {data && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => shareReport(data.job_id)}
                     className="w-fit rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
@@ -1037,7 +1053,7 @@ function App() {
 
             {data && (
               <>
-                <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-8 grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
                   <MetricCard title="Final Score" value={chair?.final_score ?? "-"} />
                   <MetricCard title="Recommendation" value={chair?.recommendation ?? "-"} />
                   <MetricCard title="Confidence" value={chair?.confidence ?? "-"} />
@@ -1085,9 +1101,111 @@ function App() {
               </>
             )}
           </section>
+
+          <PdfPreviewPanel file={file} filePreviewUrl={filePreviewUrl} />
         </section>
       </main>
     </div>
+  );
+}
+
+function PdfPreviewPanel({
+  file,
+  filePreviewUrl,
+}: {
+  file: File | null;
+  filePreviewUrl: string | null;
+}) {
+  const isPdf = Boolean(file && file.name.toLowerCase().endsWith(".pdf"));
+
+  return (
+    <aside className="min-w-0 rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl xl:col-start-2 xl:row-start-2">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-black tracking-tight text-white">
+            Document Preview
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            Review the source document alongside AI reviewer output.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-bold text-cyan-300">
+          Source
+        </div>
+      </div>
+
+      {!file && (
+        <div className="mt-5 flex min-h-[420px] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-700 bg-slate-950 p-6 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-2xl text-slate-400">
+            ◫
+          </div>
+
+          <p className="mt-5 text-lg font-black text-white">
+            No document selected
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            Upload a PDF proposal to enable side-by-side source preview.
+          </p>
+
+          <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-xs font-semibold text-slate-500">
+            PDF preview · proposal context · reviewer trace
+          </div>
+        </div>
+      )}
+
+      {file && !isPdf && (
+        <div className="mt-5 rounded-3xl border border-slate-800 bg-slate-950 p-5">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-blue-500/40 bg-blue-500/10 text-sm font-black text-blue-300">
+              {fileKindIcon(file.name)}
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-300">
+                Selected document
+              </p>
+              <p className="mt-2 line-clamp-3 font-bold text-white">
+                {shortFileName(file.name, 72)}
+              </p>
+              <p className="mt-2 text-sm text-slate-500">
+                {fileKindLabel(file.name)} · {formatFileSize(file.size)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm leading-6 text-yellow-100">
+            Inline source preview is currently available for PDF files. This file
+            can still be analyzed normally by Evalora.
+          </div>
+        </div>
+      )}
+
+      {file && isPdf && filePreviewUrl && (
+        <div className="mt-5 overflow-hidden rounded-3xl border border-slate-800 bg-slate-950">
+          <div className="border-b border-slate-800 bg-slate-900/80 p-4">
+            <p className="line-clamp-2 text-sm font-bold text-white">
+              {shortFileName(file.name, 80)}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              PDF document · {formatFileSize(file.size)}
+            </p>
+          </div>
+
+          <iframe
+            src={filePreviewUrl}
+            title="PDF preview"
+            className="h-[620px] w-full bg-slate-950"
+          />
+
+          <div className="border-t border-slate-800 bg-slate-900/80 p-3 text-xs leading-5 text-slate-500">
+            Preview is local to this browser session. Uploaded content is analyzed
+            only when you run Evalora.
+          </div>
+        </div>
+      )}
+    </aside>
   );
 }
 
@@ -1106,7 +1224,7 @@ function LandingLogin({
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800/80 px-6 py-6 md:px-8">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
+        <div className="mx-auto flex max-w-[1700px] items-center justify-between">
           <div>
             <div className="flex items-center gap-3">
               <img
@@ -1134,7 +1252,7 @@ function LandingLogin({
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-7xl gap-8 px-6 py-12 md:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:py-20">
+      <main className="mx-auto grid max-w-[1700px] gap-8 px-6 py-12 md:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:py-20">
         <section className="flex flex-col justify-center">
           <div className="max-w-3xl">
             <p className="mb-4 inline-flex rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-300">
@@ -1462,7 +1580,7 @@ function ReviewerInsightCard({
 
   return (
     <article
-      className={`premium-card-enter grid min-w-0 gap-5 rounded-3xl border bg-slate-900/70 p-5 shadow-xl transition hover:-translate-y-1 hover:shadow-2xl xl:grid-cols-[260px_1fr] ${styles.border} ${styles.glow}`}
+      className={`premium-card-enter grid min-w-0 gap-5 rounded-3xl border bg-slate-900/70 p-5 shadow-xl transition hover:-translate-y-1 hover:shadow-2xl 2xl:grid-cols-[260px_1fr] ${styles.border} ${styles.glow}`}
     >
       <div className="min-w-0">
         <div className="flex items-start gap-4">
@@ -1580,7 +1698,7 @@ function ReviewerAgreement({
 
       <p className="mt-2 text-sm text-slate-400">Alignment across reviewer perspectives.</p>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         <MetricCard title="Scientific" value={scientific?.score ?? "-"} />
         <MetricCard title="Commercial" value={commercial?.score ?? "-"} />
         <MetricCard title="Risk" value={risk?.score ?? "-"} />
