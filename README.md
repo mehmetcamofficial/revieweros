@@ -108,6 +108,8 @@ Evalora exposes MCP-compatible observability endpoints:
 ```http
 GET /mcp/traces
 GET /mcp/traces/{trace_id}
+```
+
 ---
 
 # Architecture
