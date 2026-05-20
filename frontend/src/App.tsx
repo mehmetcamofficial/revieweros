@@ -2105,6 +2105,7 @@ function PublicLandingPage({
   const [activeStep, setActiveStep] = useState(0);
   const [activeNav, setActiveNav] = useState<SectionKey>("about");
   const [architectureOpen, setArchitectureOpen] = useState(false);
+  const [architectureZoom, setArchitectureZoom] = useState(1);
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -2278,7 +2279,7 @@ function PublicLandingPage({
               <SharedBrandLogo compact />
             </button>
 
-            <nav className="flex flex-wrap items-center justify-center gap-2">
+            <nav className="order-3 flex w-full flex-wrap items-center justify-center gap-2 xl:order-none xl:w-auto">
               {navItems.map((item) => (
                 <button
                   key={item.key}
@@ -2321,7 +2322,7 @@ function PublicLandingPage({
               Google Cloud Rapid Agent Hackathon · Arize Track
             </div>
 
-            <h1 className="max-w-3xl text-5xl font-black leading-[0.95] tracking-tight md:text-6xl">
+            <h1 className="max-w-3xl text-4xl font-black leading-[0.98] tracking-tight sm:text-5xl md:text-6xl">
               AI reviewer panels for{" "}
               <span className="bg-gradient-to-r from-cyan-300 via-emerald-300 to-fuchsia-300 bg-clip-text text-transparent">
                 proposal decisions.
@@ -2337,7 +2338,7 @@ function PublicLandingPage({
               <button
                 type="button"
                 onClick={onEnter}
-                className="rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-7 py-4 text-base font-bold text-white transition hover:-translate-y-1 hover:scale-105 hover:shadow-[0_0_35px_rgba(34,211,238,0.28)]"
+                className="rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-7 py-4 text-base font-bold text-white shadow-[0_0_24px_rgba(34,211,238,0.18)] transition hover:-translate-y-1 hover:scale-105 hover:shadow-[0_0_35px_rgba(34,211,238,0.28)] active:scale-95"
               >
                 Enter ReviewerOS ↗
               </button>
@@ -2361,12 +2362,12 @@ function PublicLandingPage({
           </div>
 
           <div
-            className="relative min-h-[520px] overflow-hidden rounded-[2rem] border border-cyan-400/15 bg-slate-950/78 p-6 shadow-[0_0_40px_rgba(34,211,238,0.08)] backdrop-blur-xl"
+            className="relative min-h-[420px] overflow-hidden rounded-[2rem] md:min-h-[520px] border border-cyan-400/15 bg-slate-950/78 p-6 shadow-[0_0_40px_rgba(34,211,238,0.08)] backdrop-blur-xl"
             style={{ animation: "evaloraFloat 7s ease-in-out infinite" }}
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(59,130,246,0.22),transparent_25%),radial-gradient(circle_at_60%_60%,rgba(168,85,247,0.20),transparent_30%)]" />
 
-            <div className="relative flex h-[480px] items-center justify-center">
+            <div className="relative flex h-[380px] items-center justify-center md:h-[480px]">
               <div className="absolute h-[330px] w-[330px] rounded-full border border-cyan-400/20" style={{ animation: "evaloraOrbitSpin 18s linear infinite" }} />
               <div className="absolute h-[240px] w-[420px] rounded-full border border-fuchsia-400/15" style={{ animation: "evaloraOrbitSpinReverse 24s linear infinite" }} />
               <div className="absolute h-[180px] w-[520px] rounded-full border border-blue-400/15" style={{ animation: "evaloraOrbitSpin 30s linear infinite" }} />
@@ -2448,6 +2449,29 @@ function PublicLandingPage({
             <div className="mt-6 text-center text-base font-semibold text-emerald-300">
               Observable. Traceable. Trustworthy.
             </div>
+
+            <div className="mt-5 rounded-2xl border border-cyan-400/15 bg-slate-950/70 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">
+                  Live telemetry
+                </p>
+                <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.9)]" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {[
+                  ["model", "gemini-2.5-pro"],
+                  ["latency", `${(3.2 + activeStep * 0.18).toFixed(2)}s`],
+                  ["tokens", `${2200 + activeStep * 41}`],
+                  ["cost", `$${(0.00072 + activeStep * 0.00003).toFixed(5)}`],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{label}</p>
+                    <p className="mt-1 font-mono text-cyan-100">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -2496,7 +2520,10 @@ function PublicLandingPage({
 
             <button
               type="button"
-              onClick={() => setArchitectureOpen(true)}
+              onClick={() => {
+                setArchitectureZoom(1);
+                setArchitectureOpen(true);
+              }}
               className="rounded-2xl border border-cyan-400/35 bg-cyan-500/10 px-5 py-3 text-sm font-black text-cyan-200 transition hover:-translate-y-0.5 hover:bg-cyan-500/20"
             >
               View full architecture →
@@ -2505,7 +2532,10 @@ function PublicLandingPage({
 
           <button
             type="button"
-            onClick={() => setArchitectureOpen(true)}
+            onClick={() => {
+                setArchitectureZoom(1);
+                setArchitectureOpen(true);
+              }}
             className="mt-6 block w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-left transition hover:border-cyan-400/35 hover:shadow-[0_0_40px_rgba(34,211,238,0.12)]"
           >
             <img
@@ -2616,21 +2646,52 @@ function PublicLandingPage({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setArchitectureOpen(false)}
-                className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-bold text-slate-200 transition hover:bg-slate-800"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setArchitectureZoom((value) => Math.max(0.75, Number((value - 0.25).toFixed(2))))}
+                  className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-bold text-slate-200 transition hover:bg-slate-800"
+                >
+                  −
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setArchitectureZoom(1)}
+                  className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-bold text-slate-200 transition hover:bg-slate-800"
+                >
+                  {Math.round(architectureZoom * 100)}%
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setArchitectureZoom((value) => Math.min(2.5, Number((value + 0.25).toFixed(2))))}
+                  className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-bold text-slate-200 transition hover:bg-slate-800"
+                >
+                  +
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setArchitectureOpen(false)}
+                  className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-bold text-slate-200 transition hover:bg-slate-800"
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             <div className="max-h-[78vh] overflow-auto p-4">
-              <img
-                src="/evalora-system-architecture.png"
-                alt="Evalora ReviewerOS full system architecture"
-                className="w-full rounded-2xl border border-slate-800"
-              />
+              <div
+                className="origin-top-left transition-transform duration-300"
+                style={{ transform: `scale(${architectureZoom})`, width: `${100 / architectureZoom}%` }}
+              >
+                <img
+                  src="/evalora-system-architecture.png"
+                  alt="Evalora ReviewerOS full system architecture"
+                  className="w-full rounded-2xl border border-slate-800"
+                />
+              </div>
             </div>
           </div>
         </div>
