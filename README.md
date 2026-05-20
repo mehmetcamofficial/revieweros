@@ -1,8 +1,4 @@
-cd /Users/mehmetcam/Desktop/revieweros
 
-cp README.md README.md.backup-before-hackathon-polish 2>/dev/null || true
-
-cat > README.md <<'MD'
 # Evalora ReviewerOS
 
 **Observable multi-agent proposal intelligence platform powered by Gemini, Vertex AI, and Google Cloud.**
