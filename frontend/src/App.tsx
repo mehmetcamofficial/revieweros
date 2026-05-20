@@ -58,9 +58,6 @@ const WS_URL = "wss://revieweros-api-933794864277.europe-west1.run.app/ws/analyz
 const AUTH_STORAGE_KEY = "revieweros_auth_session";
 const WORKSPACE_MONTHLY_QUOTA = 25;
 const REQUEST_ACCESS_ENDPOINT = `${API_URL}/request-access`;
-const AI_PROVIDER_NAME = "Vertex AI";
-const AI_MODEL_NAME = "Gemini 2.5 Pro";
-const AI_STACK_LABEL = `${AI_MODEL_NAME} on ${AI_PROVIDER_NAME}`;
 
 const SAMPLE_REPORT_URL =
   `${API_URL}/analyses/4e5fdf73-5a90-4f88-a265-3b3fab78ebad/report`;
@@ -74,6 +71,32 @@ const reviewerSteps = [
 ];
 
 function App() {
+
+  useEffect(() => {
+    const styleId = "evalora-shared-brand-animations";
+    if (document.getElementById(styleId)) return;
+
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.innerHTML = `
+      @keyframes evaloraOrbitSpin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      @keyframes evaloraOrbitSpinReverse {
+        from { transform: rotate(360deg); }
+        to { transform: rotate(0deg); }
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      const existing = document.getElementById(styleId);
+      if (existing) existing.remove();
+    };
+  }, []);
+
+
   const [authSession, setAuthSession] = useState<AuthSession | null>(() => {
     try {
       const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
@@ -107,6 +130,9 @@ function App() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedHistoryJobId, setSelectedHistoryJobId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [showPublicLanding, setShowPublicLanding] = useState(() => {
+    return window.location.hash !== "#login";
+  });
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestEmail, setRequestEmail] = useState("");
@@ -840,12 +866,60 @@ function App() {
   }, [result]);
 
   if (!authSession) {
+    if (showPublicLanding) {
+      return (
+        <>
+          <RequestAccessModal
+            open={requestModalOpen}
+            email={requestEmail}
+            organization={requestOrganization}
+            useCase={requestUseCase}
+            expectedVolume={requestExpectedVolume}
+            submitting={requestSubmitting}
+            onEmailChange={setRequestEmail}
+            onOrganizationChange={setRequestOrganization}
+            onUseCaseChange={setRequestUseCase}
+            onExpectedVolumeChange={setRequestExpectedVolume}
+            onClose={() => setRequestModalOpen(false)}
+            onSubmit={handleRequestAccessSubmit}
+          />
+
+          <PublicLandingPage
+            onEnter={() => {
+              window.location.hash = "login";
+              setShowPublicLanding(false);
+            }}
+            onRequestAccess={() => {
+              setRequestEmail("");
+              setRequestOrganization("");
+              setRequestUseCase("Grant proposal review demo");
+              setRequestExpectedVolume("10");
+              setRequestModalOpen(true);
+            }}
+          />
+        </>
+      );
+    }
+
     return (
-      <LandingLogin
-        onLogin={handleLogin}
-        loading={authChecking}
-        error={authError}
-      />
+      <>
+        <button
+          type="button"
+          onClick={() => {
+            window.location.hash = "";
+            setShowPublicLanding(true);
+          }}
+          className="mb-6 inline-flex rounded-full border border-slate-700 bg-slate-950/90 px-4 py-2 text-sm font-bold text-slate-200 shadow-xl backdrop-blur transition hover:bg-slate-900"
+        >
+          ← Back to landing
+        </button>
+
+        <LandingLogin
+          onLogin={handleLogin}
+          loading={authChecking}
+          error={authError}
+        />
+      </>
     );
   }
 
@@ -875,27 +949,13 @@ function App() {
       <header className="border-b border-slate-800/80 bg-slate-950/95 px-6 py-6 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-[1700px] flex-col gap-5 overflow-hidden md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <img
-                src="/evalora-icon.png"
-                alt="Evalora"
-                className="h-11 w-11 object-contain"
-              />
-              <div>
-                <h1 className="text-3xl font-black tracking-tight text-white">
-                  Evalora ReviewerOS
-                </h1>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80">
-                  Multi-agent proposal review
-                </p>
-              </div>
-            </div>
+            <SharedBrandLogo compact />
             <p className="mt-2 max-w-3xl text-slate-400">
               AI-powered multi-agent proposal review workspace for grants, accelerators, and innovation funding.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="max-w-full shrink-0 truncate rounded-full border border-emerald-500/30 bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-300">
               Evalora Backend Connected
             </div>
@@ -1599,6 +1659,41 @@ function PdfPreviewPanel({
   );
 }
 
+
+function SharedBrandLogo({
+  compact = false,
+}: {
+  compact?: boolean;
+}) {
+  return (
+    <div className={`flex items-center gap-4 ${compact ? "gap-3" : "gap-4"}`}>
+      <div className="relative shrink-0">
+        <div className="absolute inset-0 rounded-[24px] bg-cyan-400/10 blur-xl" />
+        <div
+          className={`relative flex items-center justify-center overflow-hidden rounded-[22px] border border-cyan-400/25 bg-slate-950/85 shadow-[0_0_28px_rgba(34,211,238,0.15)] ${
+            compact ? "h-14 w-14 md:h-16 md:w-16" : "h-16 w-16 md:h-20 md:w-20"
+          }`}
+        >
+          <img
+            src="/evalora-icon.png"
+            alt="Evalora"
+            className="h-[82%] w-[82%] object-contain"
+          />
+        </div>
+      </div>
+
+      <div className="min-w-0">
+        <div className={`font-black tracking-tight text-white ${compact ? "text-2xl md:text-3xl" : "text-4xl md:text-6xl"}`}>
+          Evalora ReviewerOS
+        </div>
+        <div className={`mt-1 font-black uppercase tracking-[0.28em] text-cyan-300 ${compact ? "text-[10px] md:text-xs" : "text-lg md:text-2xl"}`}>
+          Multi-Agent Proposal Review
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LandingLogin({
   onLogin,
   loading,
@@ -1651,7 +1746,7 @@ function LandingLogin({
           organization,
           use_case: useCase,
           expected_volume: expectedVolume,
-          source: "evalora-landing",
+          source: "evalora-login",
         }),
       });
 
@@ -1675,7 +1770,106 @@ function LandingLogin({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
+      <style>{`
+        @keyframes evaloraBgDrift {
+          0% { transform: scale(1.06) translate3d(0px, 0px, 0); filter: saturate(1.05) brightness(0.95); }
+          35% { transform: scale(1.10) translate3d(-26px, -16px, 0); filter: saturate(1.18) brightness(1.04); }
+          70% { transform: scale(1.08) translate3d(22px, 12px, 0); filter: saturate(1.10) brightness(1.00); }
+          100% { transform: scale(1.12) translate3d(-10px, 18px, 0); filter: saturate(1.22) brightness(1.08); }
+        }
+
+        @keyframes evaloraLoginCardBreathe {
+          0%, 100% {
+            transform: translateY(0px);
+            border-color: rgba(30, 41, 59, 1);
+            box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+          }
+          50% {
+            transform: translateY(-4px);
+            border-color: rgba(34, 211, 238, 0.32);
+            box-shadow: 0 0 26px rgba(34, 211, 238, 0.10);
+          }
+        }
+
+        @keyframes evaloraSignalSweep {
+          0% {
+            transform: translateX(-120%);
+            opacity: 0;
+          }
+          15% {
+            opacity: 0.75;
+          }
+          85% {
+            opacity: 0.75;
+          }
+          100% {
+            transform: translateX(120%);
+            opacity: 0;
+          }
+        }
+
+        @keyframes evaloraPanelFloat {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-6px);
+          }
+        }
+
+        .evalora-login-reviewer-grid {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .evalora-login-reviewer-grid::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 50%;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.65), rgba(52, 211, 153, 0.65), transparent);
+          animation: evaloraSignalSweep 5.2s ease-in-out infinite;
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        .evalora-login-reviewer-grid > div {
+          position: relative;
+          z-index: 1;
+          animation: evaloraLoginCardBreathe 7s ease-in-out infinite;
+        }
+
+        .evalora-login-reviewer-grid > div:nth-child(2) {
+          animation-delay: 0.8s;
+        }
+
+        .evalora-login-reviewer-grid > div:nth-child(3) {
+          animation-delay: 1.6s;
+        }
+
+        .evalora-login-reviewer-grid > div:nth-child(4) {
+          animation-delay: 2.4s;
+        }
+
+        .evalora-login-access-panel {
+          animation: evaloraPanelFloat 8s ease-in-out infinite;
+        }
+      `}</style>
+      <div className="pointer-events-none absolute inset-0">
+        <img
+          src="/evalora-space-bg.png"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-70"
+          style={{ animation: "evaloraBgDrift 46s ease-in-out infinite alternate" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#020617]/94 via-[#020617]/76 to-[#020617]/58" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/76 via-transparent to-[#020617]/95" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_25%,rgba(34,211,238,0.16),transparent_34%),radial-gradient(circle_at_75%_35%,rgba(168,85,247,0.18),transparent_32%),radial-gradient(circle_at_55%_80%,rgba(16,185,129,0.10),transparent_30%)]" />
+      </div>
+
       <RequestAccessModal
         open={requestModalOpen}
         email={requestEmail}
@@ -1690,89 +1884,127 @@ function LandingLogin({
         onClose={() => setRequestModalOpen(false)}
         onSubmit={handleRequestAccessSubmit}
       />
-      <header className="border-b border-slate-800/80 px-6 py-6 md:px-8">
-        <div className="mx-auto flex max-w-[1700px] items-center justify-between">
+
+      <header className="relative z-10 border-b border-cyan-400/15 bg-slate-950/45 px-6 py-5 backdrop-blur-xl md:px-8">
+        <div className="mx-auto flex max-w-[1700px] items-center justify-between gap-6">
           <div>
-            <div className="flex items-center gap-3">
-              <img
-                src="/evalora-icon.png"
-                alt="Evalora"
-                className="h-11 w-11 object-contain"
-              />
-              <div>
-                <h1 className="text-3xl font-black tracking-tight text-white">
-                  Evalora ReviewerOS
-                </h1>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80">
-                  Multi-agent proposal review
-                </p>
-              </div>
-            </div>
-            <p className="mt-2 text-slate-400">
+            <SharedBrandLogo compact />
+            <p className="mt-3 max-w-4xl text-slate-400">
               AI-powered multi-agent proposal review workspace for grants, accelerators, and innovation funding.
             </p>
           </div>
 
-          <div className="hidden rounded-full border border-emerald-500/30 bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-300 md:block">
+          <div className="hidden rounded-full border border-emerald-500/30 bg-emerald-500/10 px-5 py-2 text-sm font-semibold text-emerald-300 shadow-[0_0_24px_rgba(16,185,129,0.12)] md:block">
             Demo Access
           </div>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-[1700px] gap-8 px-6 py-12 md:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:py-20">
-        <section className="flex flex-col justify-center">
-          <div className="max-w-3xl">
-            <p className="mb-4 inline-flex rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-300">
-              AI reviewer operating system
+      <main className="relative z-10 mx-auto grid max-w-[1700px] gap-8 px-6 py-10 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:py-14">
+        <section className="space-y-8">
+          <div className="rounded-[2rem] border border-cyan-400/15 bg-slate-950/60 p-7 shadow-[0_0_40px_rgba(34,211,238,0.08)] backdrop-blur-xl">
+            <p className="text-sm font-black uppercase tracking-[0.35em] text-cyan-300">
+              Reviewer Panel
             </p>
 
-            <h2 className="text-5xl font-black leading-tight tracking-tight md:text-6xl">
-              Multi-agent review for proposals, grants, and accelerator applications.
+            <h2 className="mt-4 text-4xl font-black leading-tight text-white md:text-5xl">
+              Sign in to run observable proposal reviews.
             </h2>
 
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-400">
-              Upload a proposal and generate a structured reviewer panel output:
-              scientific merit, commercial readiness, risk analysis, integrity checks,
-              chair decision, and a shareable PDF report.
+            <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-400">
+              Access your Evalora workspace to upload proposals, run Gemini reviewer agents,
+              generate reports, and inspect runtime traces.
             </p>
 
             <div className="mt-8 grid gap-4 md:grid-cols-2">
-              <LandingFeature title="Scientific Reviewer" text="Methodology, novelty, validation, and feasibility." />
-              <LandingFeature title="Commercial Reviewer" text="Market, business model, pricing, and GTM readiness." />
-              <LandingFeature title="Risk Reviewer" text="Operational, regulatory, ethical, and execution risks." />
-              <LandingFeature title="Integrity Reviewer" text="Unsupported claims, AI-likelihood, and data governance." />
+              {[
+                ["Scientific Reviewer", "Methodology, novelty, validation, and feasibility."],
+                ["Commercial Reviewer", "Market, business model, pricing, and GTM readiness."],
+                ["Risk Reviewer", "Operational, regulatory, ethical, and execution risks."],
+                ["Integrity Reviewer", "Unsupported claims, AI-likelihood, and data governance."],
+              ].map(([title, body]) => (
+                <div
+                  key={title}
+                  className="rounded-3xl border border-slate-800 bg-slate-950/65 p-5 backdrop-blur transition hover:-translate-y-2 hover:border-cyan-400/40 hover:shadow-[0_0_34px_rgba(34,211,238,0.16)]"
+                >
+                  <p className="text-lg font-black text-white">{title}</p>
+                  <p className="mt-3 text-sm leading-6 text-slate-400">{body}</p>
+                </div>
+              ))}
             </div>
           </div>
-          <LandingSimulationPanel />
 
-          <LandingSalesPreview onRequestAccess={() => setRequestModalOpen(true)} />
+          <div className="rounded-[2rem] border border-emerald-400/15 bg-slate-950/55 p-7 backdrop-blur-xl">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.35em] text-emerald-300">
+                  Sales Demo Ready
+                </p>
+                <h3 className="mt-3 text-3xl font-black text-white">
+                  Evaluate proposals before the first upload.
+                </h3>
+                <p className="mt-3 max-w-2xl text-slate-400">
+                  Use sample reports, pricing context, and access requests to turn the demo into a lightweight SaaS acquisition flow.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setRequestModalOpen(true)}
+                className="rounded-2xl border border-emerald-400/35 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-400/20 hover:shadow-[0_0_30px_rgba(52,211,153,0.20)]"
+              >
+                Request Access
+              </button>
+            </div>
+
+            <div className="mt-7 grid gap-4 md:grid-cols-3">
+              {[
+                ["Starter", "$29", "For individual founders and grant writers."],
+                ["Team", "$99", "For labs, accelerators, and proposal teams."],
+                ["Institution", "Custom", "White-label portals, quotas, and API access."],
+              ].map(([plan, price, body]) => (
+                <div key={plan} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-5">
+                  <p className="font-black text-white">{plan}</p>
+                  <p className="mt-3 text-3xl font-black text-white">{price}</p>
+                  <p className="mt-3 text-sm leading-6 text-slate-400">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
 
-        <section className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl">
-          <h3 className="text-2xl font-black">Enter demo workspace</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-400">
-            Use a workspace ID to separate analysis history. The access code protects the demo backend.
+        <section className="self-start rounded-[2rem] border border-cyan-400/15 bg-slate-950/70 p-7 shadow-[0_0_48px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+          <p className="text-sm font-black uppercase tracking-[0.35em] text-cyan-300">
+            Workspace Access
           </p>
 
-          <div className="mt-6 space-y-4">
+          <h2 className="mt-4 text-3xl font-black text-white">
+            Enter your ReviewerOS demo workspace.
+          </h2>
+
+          <p className="mt-3 leading-7 text-slate-400">
+            Use the workspace ID and access code provided for your Evalora ReviewerOS demo account.
+          </p>
+
+          <div className="mt-7 space-y-4">
             <label className="block">
-              <span className="text-sm font-semibold text-slate-300">User ID / Workspace</span>
+              <span className="text-sm font-bold text-slate-300">Workspace ID</span>
               <input
                 value={userId}
                 onChange={(event) => setUserId(event.target.value)}
-                placeholder="your-workspace"
-                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-blue-400"
+                placeholder="client-a"
+                className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950/80 px-5 py-4 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400/50"
               />
             </label>
 
             <label className="block">
-              <span className="text-sm font-semibold text-slate-300">Access Code</span>
+              <span className="text-sm font-bold text-slate-300">Access Code</span>
               <input
                 value={accessCode}
                 onChange={(event) => setAccessCode(event.target.value)}
                 placeholder="Enter access code"
                 type="password"
-                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-blue-400"
+                className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950/80 px-5 py-4 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400/50"
               />
             </label>
 
@@ -1791,11 +2023,61 @@ function LandingLogin({
             </button>
           </div>
 
-          <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm leading-6 text-slate-400">
-            Use the workspace ID and access code provided for your ReviewerOS demo account.
-            <br />
-            <span className="font-semibold text-slate-200">Example workspace:</span>{" "}
-            client-a
+          <div className="mt-6 space-y-4">
+            <div className="rounded-2xl border border-cyan-400/15 bg-slate-950/75 p-5 text-sm leading-6 text-slate-300">
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">
+                Example workspace
+              </p>
+              <p className="mt-2 font-mono text-base font-black text-emerald-300">
+                client-a
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                ["Gemini", "Vertex AI runtime"],
+                ["MCP", "Trace-ready"],
+                ["PDF", "Report export"],
+                ["Quota", "Workspace limits"],
+              ].map(([title, body]) => (
+                <div
+                  key={title}
+                  className="rounded-2xl border border-slate-800 bg-slate-950/65 p-4 transition hover:-translate-y-1 hover:border-cyan-400/30"
+                >
+                  <p className="font-black text-white">{title}</p>
+                  <p className="mt-1 text-xs text-slate-400">{body}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-2xl border border-violet-400/15 bg-violet-500/10 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-300">
+                Observable Workspace
+              </p>
+
+              <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <p className="text-2xl font-black text-white">5</p>
+                  <p className="text-[11px] text-slate-400">Agents</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-black text-white">JSON</p>
+                  <p className="text-[11px] text-slate-400">Traces</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-black text-white">PDF</p>
+                  <p className="text-[11px] text-slate-400">Reports</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setRequestModalOpen(true)}
+              className="w-full rounded-2xl border border-emerald-400/35 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-400/20 hover:shadow-[0_0_30px_rgba(52,211,153,0.20)]"
+            >
+              Request demo access
+            </button>
           </div>
         </section>
       </main>
@@ -1803,177 +2085,560 @@ function LandingLogin({
   );
 }
 
-function LandingSimulationPanel() {
+
+
+function PublicLandingPage({
+  onEnter,
+  onRequestAccess,
+}: {
+  onEnter: () => void;
+  onRequestAccess: () => void;
+}) {
+  type SectionKey = "about" | "workflow" | "architecture" | "pricing" | "docs";
+
+  const aboutRef = useRef<HTMLDivElement | null>(null);
+  const workflowRef = useRef<HTMLDivElement | null>(null);
+  const architectureRef = useRef<HTMLDivElement | null>(null);
+  const pricingRef = useRef<HTMLDivElement | null>(null);
+  const docsRef = useRef<HTMLDivElement | null>(null);
+
   const [activeStep, setActiveStep] = useState(0);
+  const [activeNav, setActiveNav] = useState<SectionKey>("about");
+  const [architectureOpen, setArchitectureOpen] = useState(false);
+  const [parallax, setParallax] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       setActiveStep((current) => (current + 1) % 5);
-    }, 1800);
+    }, 1450);
 
-    return () => clearInterval(interval);
+    return () => window.clearInterval(interval);
   }, []);
 
-  const steps = [
-    {
-      label: "Proposal uploaded",
-      detail: "Evalora extracts document text and prepares the reviewer workspace.",
-      status: "Ready",
-    },
-    {
-      label: "Scientific Reviewer",
-      detail: "Gemini analyzes methodology, novelty, validation, and feasibility.",
-      status: "Agent",
-    },
-    {
-      label: "Commercial Reviewer",
-      detail: "Market, business model, GTM readiness, and scalability are scored.",
-      status: "Agent",
-    },
-    {
-      label: "Risk & Integrity Review",
-      detail: "Operational risks, unsupported claims, and AI-likelihood are checked.",
-      status: "Guardrail",
-    },
-    {
-      label: "Chair Agent Synthesis",
-      detail: "A final recommendation and shareable PDF report are generated.",
-      status: "Decision",
-    },
+  useEffect(() => {
+    const sections = [
+      ["about", aboutRef],
+      ["workflow", workflowRef],
+      ["architecture", architectureRef],
+      ["pricing", pricingRef],
+      ["docs", docsRef],
+    ] as const;
+
+    function handleScroll() {
+      let current: SectionKey = "about";
+
+      for (const [key, ref] of sections) {
+        const top = ref.current?.getBoundingClientRect().top ?? 9999;
+
+        if (top < 180) {
+          current = key;
+        }
+      }
+
+      setActiveNav(current);
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  function handleMouseMove(event: React.MouseEvent<HTMLDivElement>) {
+    const x = (event.clientX / window.innerWidth - 0.5) * 18;
+    const y = (event.clientY / window.innerHeight - 0.5) * 18;
+    setParallax({ x, y });
+  }
+
+  function scrollToSection(key: SectionKey, ref: { current: HTMLDivElement | null }) {
+    setActiveNav(key);
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const navItems = [
+    { key: "about" as const, label: "About", ref: aboutRef },
+    { key: "workflow" as const, label: "Workflow", ref: workflowRef },
+    { key: "architecture" as const, label: "Architecture", ref: architectureRef },
+    { key: "pricing" as const, label: "Pricing", ref: pricingRef },
+    { key: "docs" as const, label: "Docs", ref: docsRef },
   ];
 
+  const workflowSteps = [
+    ["Proposal uploaded", "Document received and parsed"],
+    ["Scientific Reviewer", "Methodology, novelty, validation"],
+    ["Commercial Reviewer", "Market readiness and GTM fit"],
+    ["Risk & Integrity", "Risk, ethics, evidence quality"],
+    ["Chair Agent", "Final decision and report"],
+  ];
+
+  const capabilities = [
+    ["Gemini + Vertex AI", "Reviewer orchestration powered by Google AI.", "🧠"],
+    ["MCP-compatible", "Trace endpoints for external observability.", "◈"],
+    ["PDF reports", "Institutional-grade reviewer outputs.", "📄"],
+    ["Workspace quotas", "SaaS-ready usage governance.", "📈"],
+  ];
+
+  const stack = ["Google Cloud", "Vertex AI", "Gemini 2.5 Pro", "Cloud Run", "Firestore", "MCP Compatible"];
+
   return (
-    <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.24em] text-emerald-300">
-            Live workflow simulation
-          </p>
-          <h3 className="mt-2 text-2xl font-black text-white">
-            How Evalora reviews a proposal
-          </h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            A specialized Gemini-powered reviewer panel evaluates each proposal,
-            compares reviewer signals, and produces an institutional report.
-          </p>
+    <div
+      onMouseMove={handleMouseMove}
+      className="relative min-h-screen overflow-hidden bg-[#020617] text-white"
+    >
+      <style>{`
+        @keyframes evaloraBgDrift {
+          0% { transform: scale(1.06) translate3d(0px, 0px, 0); filter: saturate(1.05) brightness(0.95); }
+          35% { transform: scale(1.10) translate3d(-26px, -16px, 0); filter: saturate(1.18) brightness(1.04); }
+          70% { transform: scale(1.08) translate3d(22px, 12px, 0); filter: saturate(1.10) brightness(1.00); }
+          100% { transform: scale(1.12) translate3d(-10px, 18px, 0); filter: saturate(1.22) brightness(1.08); }
+        }
+
+        @keyframes evaloraStarField {
+          0% { transform: translateY(0px); opacity: 0.25; }
+          50% { opacity: 0.55; }
+          100% { transform: translateY(-28px); opacity: 0.35; }
+        }
+
+        @keyframes evaloraFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+        }
+
+        @keyframes evaloraSignal {
+          0% { transform: translateX(-120%); opacity: 0; }
+          15% { opacity: 0.8; }
+          85% { opacity: 0.8; }
+          100% { transform: translateX(120%); opacity: 0; }
+        }
+
+        @keyframes evaloraOrbitSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        @keyframes evaloraOrbitSpinReverse {
+          from { transform: rotate(360deg); }
+          to { transform: rotate(0deg); }
+        }
+
+        .evalora-signal-card {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .evalora-signal-card::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 38%;
+          background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.14), transparent);
+          animation: evaloraSignal 5.8s ease-in-out infinite;
+          pointer-events: none;
+        }
+      `}</style>
+
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{
+            transform: `translate3d(${parallax.x}px, ${parallax.y}px, 0) scale(1.04)`,
+          }}
+        >
+          <img
+            src="/evalora-space-bg.png"
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover opacity-90"
+            style={{ animation: "evaloraBgDrift 42s ease-in-out infinite alternate" }}
+          />
         </div>
 
-        <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-300">
-          Powered by {AI_STACK_LABEL}
-        </div>
+        <div
+          className="absolute inset-0 opacity-35"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, rgba(125,211,252,0.85) 1px, transparent 1px)",
+            backgroundSize: "90px 90px",
+            animation: "evaloraStarField 16s linear infinite",
+          }}
+        />
+
+        <div className="absolute inset-0 bg-gradient-to-r from-[#020617]/90 via-[#020617]/55 to-[#020617]/35" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/45 via-transparent to-[#020617]/92" />
       </div>
 
-      <div className="mt-5 space-y-3">
-        {steps.map((step, index) => (
-          <div
-            key={step.label}
-            className={`group rounded-2xl border bg-slate-950 p-4 transition-all duration-500 ${
-              activeStep === index
-                ? "border-emerald-400/60 shadow-[0_0_30px_rgba(16,185,129,0.12)]"
-                : "border-slate-800 hover:border-emerald-500/30"
-            }`}
-          >
-            <div className="flex items-start gap-4">
-              <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-sm font-black text-emerald-300">
-                {index + 1}
-              </div>
+      <div className="relative z-10 mx-auto max-w-7xl px-6 py-5">
+        <header className="sticky top-4 z-40 mb-12 rounded-3xl border border-white/10 bg-slate-950/72 px-5 py-3 shadow-[0_0_48px_rgba(20,184,166,0.12)] backdrop-blur-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="group text-left"
+            >
+              <SharedBrandLogo compact />
+            </button>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-bold text-white">{step.label}</p>
-                  <span className="rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    {step.status}
-                  </span>
+            <nav className="flex flex-wrap items-center justify-center gap-2">
+              {navItems.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => scrollToSection(item.key, item.ref)}
+                  className={`rounded-2xl border px-4 py-2.5 text-sm font-semibold transition hover:-translate-y-0.5 hover:scale-105 ${
+                    activeNav === item.key
+                      ? "border-cyan-300/50 bg-cyan-400/20 text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.18)]"
+                      : "border-white/10 bg-slate-900/80 text-slate-200 hover:border-cyan-400/40 hover:text-white"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={onRequestAccess}
+                className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-200 transition hover:-translate-y-0.5 hover:scale-105 hover:bg-emerald-500/20 hover:shadow-[0_0_34px_rgba(16,185,129,0.32)] active:scale-95"
+              >
+                ✉ Request Access
+              </button>
+
+              <button
+                type="button"
+                onClick={onEnter}
+                className="rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-fuchsia-500 px-4 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(99,102,241,0.22)] transition hover:-translate-y-0.5 hover:scale-105 hover:shadow-[0_0_42px_rgba(99,102,241,0.44)] active:scale-95"
+              >
+                🚀 Enter ReviewerOS
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <section ref={aboutRef} className="mb-14 grid items-start gap-8 scroll-mt-32 lg:grid-cols-[1.05fr_0.9fr_0.82fr]">
+          <div className="pt-4">
+            <div className="mb-5 inline-flex rounded-full border border-fuchsia-400/25 bg-fuchsia-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-violet-200">
+              Google Cloud Rapid Agent Hackathon · Arize Track
+            </div>
+
+            <h1 className="max-w-3xl text-5xl font-black leading-[0.95] tracking-tight md:text-6xl">
+              AI reviewer panels for{" "}
+              <span className="bg-gradient-to-r from-cyan-300 via-emerald-300 to-fuchsia-300 bg-clip-text text-transparent">
+                proposal decisions.
+              </span>
+            </h1>
+
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+              Evalora analyzes proposals with Gemini-powered reviewer agents,
+              generates institutional PDF reports, and exposes MCP-compatible runtime traces.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-4">
+              <button
+                type="button"
+                onClick={onEnter}
+                className="rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-7 py-4 text-base font-bold text-white transition hover:-translate-y-1 hover:scale-105 hover:shadow-[0_0_35px_rgba(34,211,238,0.28)]"
+              >
+                Enter ReviewerOS ↗
+              </button>
+
+              <button
+                type="button"
+                onClick={onRequestAccess}
+                className="rounded-2xl border border-violet-400/35 bg-violet-500/10 px-7 py-4 text-base font-semibold text-violet-100 transition hover:-translate-y-1 hover:scale-105 hover:bg-violet-500/20"
+              >
+                Request Demo Access
+              </button>
+
+              <button
+                type="button"
+                onClick={() => scrollToSection("architecture", architectureRef)}
+                className="rounded-2xl border border-cyan-400/25 bg-cyan-500/10 px-7 py-4 text-base font-semibold text-cyan-100 transition hover:-translate-y-1 hover:bg-cyan-500/20"
+              >
+                View Architecture
+              </button>
+            </div>
+          </div>
+
+          <div
+            className="relative min-h-[520px] overflow-hidden rounded-[2rem] border border-cyan-400/15 bg-slate-950/78 p-6 shadow-[0_0_40px_rgba(34,211,238,0.08)] backdrop-blur-xl"
+            style={{ animation: "evaloraFloat 7s ease-in-out infinite" }}
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(59,130,246,0.22),transparent_25%),radial-gradient(circle_at_60%_60%,rgba(168,85,247,0.20),transparent_30%)]" />
+
+            <div className="relative flex h-[480px] items-center justify-center">
+              <div className="absolute h-[330px] w-[330px] rounded-full border border-cyan-400/20" style={{ animation: "evaloraOrbitSpin 18s linear infinite" }} />
+              <div className="absolute h-[240px] w-[420px] rounded-full border border-fuchsia-400/15" style={{ animation: "evaloraOrbitSpinReverse 24s linear infinite" }} />
+              <div className="absolute h-[180px] w-[520px] rounded-full border border-blue-400/15" style={{ animation: "evaloraOrbitSpin 30s linear infinite" }} />
+
+              <div className="absolute h-52 w-52 rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(125,211,252,0.95),rgba(99,102,241,0.55),rgba(147,51,234,0.4))] shadow-[0_0_80px_rgba(34,211,238,0.35)]" />
+
+              {[
+                ["Gemini / Vertex AI", "top-12 left-1/2 -translate-x-1/2"],
+                ["Multi-Agent", "left-6 top-[45%]"],
+                ["Observability", "right-6 top-28"],
+                ["MCP Compatible", "bottom-14 left-7"],
+                ["PDF Reports", "bottom-16 right-7"],
+              ].map(([label, position]) => (
+                <div
+                  key={label}
+                  className={`absolute ${position} rounded-2xl border border-cyan-400/20 bg-slate-900/85 px-4 py-3 text-sm font-semibold text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.12)] transition hover:-translate-y-1 hover:border-cyan-300/45`}
+                >
+                  {label}
                 </div>
-                <p className="mt-1 text-sm leading-6 text-slate-500">
-                  {step.detail}
+              ))}
+            </div>
+          </div>
+
+          <div ref={workflowRef} className="evalora-signal-card rounded-[2rem] border border-emerald-400/15 bg-slate-950/82 p-6 shadow-[0_0_40px_rgba(16,185,129,0.08)] backdrop-blur-xl scroll-mt-32">
+            <div className="mb-6 flex items-center justify-between">
+              <div className="text-sm font-bold uppercase tracking-[0.28em] text-emerald-300">
+                ● Live Agent Workflow
+              </div>
+              <div className="animate-pulse text-sm font-semibold text-emerald-300">
+                Live
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {workflowSteps.map(([title, body], index) => {
+                const isActive = activeStep === index;
+                const isDone = activeStep > index;
+
+                return (
+                  <div
+                    key={title}
+                    className={`rounded-2xl border p-4 transition-all duration-500 ${
+                      isActive
+                        ? "border-cyan-400/45 bg-cyan-500/10 shadow-[0_0_24px_rgba(34,211,238,0.18)]"
+                        : "border-white/10 bg-slate-900/72"
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-bold ${
+                          isDone || isActive
+                            ? "border-emerald-400/45 bg-emerald-500/15 text-emerald-200"
+                            : "border-slate-700 bg-slate-900 text-slate-400"
+                        }`}
+                      >
+                        {index + 1}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="text-lg font-bold text-white">{title}</div>
+                        <div className="mt-1 text-sm leading-6 text-slate-400">{body}</div>
+                      </div>
+
+                      <div
+                        className={`mt-1 h-8 w-8 rounded-full border-2 ${
+                          isDone
+                            ? "border-emerald-400 bg-emerald-400/15"
+                            : isActive
+                            ? "animate-pulse border-cyan-400"
+                            : "border-slate-600"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 text-center text-base font-semibold text-emerald-300">
+              Observable. Traceable. Trustworthy.
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-14 rounded-[2rem] border border-white/10 bg-slate-950/65 p-5 backdrop-blur-xl">
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {stack.map((item) => (
+              <div
+                key={item}
+                className="rounded-2xl border border-slate-800 bg-slate-900/75 px-5 py-3 text-sm font-bold text-slate-200 transition hover:-translate-y-1 hover:border-cyan-400/35 hover:text-cyan-100"
+              >
+                {item}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-14 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {capabilities.map(([title, body, icon]) => (
+            <div
+              key={title}
+              className="group rounded-[1.6rem] border border-white/10 bg-slate-900/78 p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-400/30 hover:shadow-[0_0_25px_rgba(34,211,238,0.12)]"
+            >
+              <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-4xl shadow-[0_0_28px_rgba(34,211,238,0.10)] transition group-hover:scale-110 group-hover:rotate-6">
+                {icon}
+              </div>
+              <div className="text-xl font-bold text-white">{title}</div>
+              <div className="mt-3 text-sm leading-7 text-slate-400">{body}</div>
+            </div>
+          ))}
+        </section>
+
+        <section ref={architectureRef} className="mb-14 scroll-mt-32 rounded-[2rem] border border-cyan-400/15 bg-slate-950/72 p-6 shadow-[0_0_44px_rgba(34,211,238,0.08)] backdrop-blur-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.3em] text-cyan-300">
+                Architecture
+              </p>
+              <h2 className="mt-3 text-3xl font-black text-white">
+                Full observable reviewer system.
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+                Cloud Run backend, Gemini/Vertex AI orchestration, Firestore history,
+                Cloud Storage reports, and MCP-compatible trace endpoints.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setArchitectureOpen(true)}
+              className="rounded-2xl border border-cyan-400/35 bg-cyan-500/10 px-5 py-3 text-sm font-black text-cyan-200 transition hover:-translate-y-0.5 hover:bg-cyan-500/20"
+            >
+              View full architecture →
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setArchitectureOpen(true)}
+            className="mt-6 block w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-left transition hover:border-cyan-400/35 hover:shadow-[0_0_40px_rgba(34,211,238,0.12)]"
+          >
+            <img
+              src="/evalora-system-architecture.png"
+              alt="Evalora ReviewerOS system architecture"
+              className="w-full object-cover"
+            />
+          </button>
+        </section>
+
+        <section ref={pricingRef} className="mb-14 scroll-mt-32 rounded-[2rem] border border-emerald-400/15 bg-slate-950/65 p-7 backdrop-blur-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.3em] text-emerald-300">
+                Demo Access & Pricing
+              </p>
+              <h2 className="mt-3 text-3xl font-black text-white">
+                Productization-ready SaaS flow.
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+                Pricing shown for product roadmap context. Hackathon demo access is available by request.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onRequestAccess}
+              className="rounded-2xl border border-emerald-400/35 bg-emerald-400/10 px-5 py-3 text-sm font-black text-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-400/20"
+            >
+              Request Access
+            </button>
+          </div>
+
+          <div className="mt-7 grid gap-4 md:grid-cols-3">
+            {[
+              ["Starter", "$29", "For individual founders and grant writers."],
+              ["Team", "$99", "For labs, accelerators, and proposal teams."],
+              ["Institution", "Custom", "White-label portals, quotas, and API access."],
+            ].map(([plan, price, body]) => (
+              <div key={plan} className="rounded-2xl border border-slate-800 bg-slate-950/72 p-5">
+                <p className="font-black text-white">{plan}</p>
+                <p className="mt-3 text-3xl font-black text-white">{price}</p>
+                <p className="mt-3 text-sm leading-6 text-slate-400">{body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section ref={docsRef} className="mb-14 scroll-mt-32 rounded-[2rem] border border-violet-400/15 bg-slate-950/65 p-7 backdrop-blur-xl">
+          <p className="text-sm font-black uppercase tracking-[0.3em] text-violet-300">
+            Docs & API
+          </p>
+
+          <div className="mt-7 grid gap-4 md:grid-cols-2">
+            {[
+              ["Analyze", "POST /analyze", "Run a proposal through the reviewer panel."],
+              ["History", "GET /analyses", "Retrieve saved analyses and report metadata."],
+              ["Trace List", "GET /mcp/traces", "Inspect MCP-compatible trace summaries."],
+              ["Trace Detail", "GET /mcp/traces/{trace_id}", "Open full trace metadata for one run."],
+            ].map(([title, endpoint, body]) => (
+              <div key={title} className="rounded-2xl border border-slate-800 bg-slate-950/72 p-5">
+                <p className="text-lg font-black text-white">{title}</p>
+                <p className="mt-3 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 font-mono text-xs text-cyan-200">
+                  {endpoint}
+                </p>
+                <p className="mt-3 text-sm leading-6 text-slate-400">{body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-10 rounded-[2rem] border border-white/10 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-fuchsia-500/10 p-8 text-center backdrop-blur-xl">
+          <h2 className="text-4xl font-black text-white">
+            Ready to run an observable reviewer panel?
+          </h2>
+          <p className="mx-auto mt-4 max-w-3xl text-slate-300">
+            Enter ReviewerOS to test the demo workspace or request access for a guided evaluation workflow.
+          </p>
+          <div className="mt-7 flex flex-wrap justify-center gap-4">
+            <button
+              type="button"
+              onClick={onEnter}
+              className="rounded-2xl bg-white px-7 py-4 text-base font-black text-slate-950 transition hover:-translate-y-1 hover:bg-slate-200"
+            >
+              Enter ReviewerOS
+            </button>
+            <button
+              type="button"
+              onClick={onRequestAccess}
+              className="rounded-2xl border border-emerald-400/35 bg-emerald-400/10 px-7 py-4 text-base font-black text-emerald-200 transition hover:-translate-y-1 hover:bg-emerald-400/20"
+            >
+              Request Demo Access
+            </button>
+          </div>
+        </section>
+      </div>
+
+      {architectureOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-5 backdrop-blur-xl">
+          <div className="max-h-[92vh] w-full max-w-7xl overflow-hidden rounded-[2rem] border border-cyan-400/20 bg-slate-950 shadow-[0_0_80px_rgba(34,211,238,0.20)]">
+            <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.28em] text-cyan-300">
+                  Evalora ReviewerOS
+                </p>
+                <p className="mt-1 text-xl font-black text-white">
+                  Full System Architecture
                 </p>
               </div>
 
-              <div
-                className={`mt-2 h-2 w-2 shrink-0 rounded-full transition-all duration-300 ${
-                  activeStep === index
-                    ? "animate-pulse bg-emerald-300 shadow-[0_0_16px_rgba(110,231,183,0.9)] scale-125"
-                    : "bg-slate-600"
-                }`}
+              <button
+                type="button"
+                onClick={() => setArchitectureOpen(false)}
+                className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-bold text-slate-200 transition hover:bg-slate-800"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="max-h-[78vh] overflow-auto p-4">
+              <img
+                src="/evalora-system-architecture.png"
+                alt="Evalora ReviewerOS full system architecture"
+                className="w-full rounded-2xl border border-slate-800"
               />
             </div>
           </div>
-        ))}
-      </div>
-    </section>
+        </div>
+      )}
+    </div>
   );
 }
 
-function LandingSalesPreview({ onRequestAccess }: { onRequestAccess: () => void }) {
-  const plans = [
-    {
-      name: "Starter",
-      price: "$29",
-      detail: "For individual founders and grant writers.",
-    },
-    {
-      name: "Team",
-      price: "$99",
-      detail: "For labs, accelerators, and proposal teams.",
-    },
-    {
-      name: "Institution",
-      price: "Custom",
-      detail: "White-label portals, quotas, and API access.",
-    },
-  ];
-
-  return (
-    <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.24em] text-cyan-300">
-            Sales demo ready
-          </p>
-          <h3 className="mt-2 text-2xl font-black text-white">
-            Evaluate proposals before the first upload.
-          </h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Use sample reports, pricing context, and access requests to turn the
-            demo into a lightweight SaaS acquisition flow.
-          </p>
-        </div>
-
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => window.open(SAMPLE_REPORT_URL, "_blank", "noopener,noreferrer")}
-            className="rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300 transition hover:bg-blue-500/20"
-          >
-            View Sample Report
-          </button>
-
-          <button
-            type="button"
-            onClick={onRequestAccess}
-            className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/20"
-          >
-            Request Access
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
-        {plans.map((plan) => (
-          <div
-            key={plan.name}
-            className="rounded-2xl border border-slate-800 bg-slate-950 p-4"
-          >
-            <p className="text-sm font-bold text-white">{plan.name}</p>
-            <p className="mt-2 text-2xl font-black text-white">{plan.price}</p>
-            <p className="mt-2 text-xs leading-5 text-slate-500">{plan.detail}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 function WorkspaceQuotaCard({
   used,
@@ -2037,15 +2702,6 @@ function WorkspaceQuotaCard({
           <p className="mt-1 text-slate-500">Monthly</p>
         </div>
       </div>
-    </div>
-  );
-}
-
-function LandingFeature({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-      <h3 className="font-bold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-400">{text}</p>
     </div>
   );
 }
