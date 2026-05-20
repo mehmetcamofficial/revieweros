@@ -112,6 +112,13 @@ GET /mcp/traces/{trace_id}
 
 ---
 
-# Architecture
+
+# Architecture Overview
 
 ![Evalora ReviewerOS Architecture](docs/evalora-architecture.png)
+
+---
+
+# Full System Architecture
+
+![Evalora ReviewerOS System Architecture](docs/evalora-system-architecture.png)
