@@ -1,111 +1,110 @@
-
 # Evalora ReviewerOS
 
 **Observable multi-agent proposal intelligence platform powered by Gemini, Vertex AI, and Google Cloud.**
 
+![Evalora Dashboard](docs/dashboard-preview.png)
+
 Evalora ReviewerOS is an institutional-grade AI reviewer workspace that evaluates grant proposals, accelerator applications, innovation projects, and research submissions through a specialized multi-agent reviewer panel.
 
-It moves beyond chat by orchestrating multiple AI agents, analyzing uploaded documents, producing structured reviewer decisions, generating shareable PDF reports, enforcing workspace quotas, and exposing MCP-compatible observability traces for agent runtime inspection.
+It moves beyond chat by orchestrating multiple AI agents, analyzing uploaded documents, generating structured reviewer decisions, producing shareable PDF reports, enforcing workspace quotas, and exposing MCP-compatible observability traces for runtime inspection.
 
 ---
 
-## Hackathon Track
+# Google Cloud Rapid Agent Hackathon
 
-**Google Cloud Rapid Agent Hackathon**  
-**Partner Track:** Arize  
-**Project Type:** Observable multi-agent decision intelligence platform  
-**Status:** Functional prototype deployed on Google Cloud + Vercel
+| Category | Value |
+|---|---|
+| Hackathon | Google Cloud Rapid Agent Hackathon |
+| Partner Track | Arize |
+| Project Type | Observable Multi-Agent Decision Intelligence Platform |
+| AI Runtime | Gemini 2.5 Pro |
+| AI Platform | Vertex AI |
+| Deployment | Google Cloud Run + Vercel |
+| Observability | MCP-compatible trace layer |
 
 ---
 
-## Live Demo
+# Live Demo
 
 | Resource | Link |
 |---|---|
 | Hosted App | `https://evalora.com.tr` |
-| Vercel Preview | `https://revieweros.vercel.app` |
+| Frontend | `https://revieweros.vercel.app` |
 | Backend API | `https://revieweros-api-933794864277.europe-west1.run.app` |
-| Demo Video | `TODO: add Devpost / YouTube / Loom link` |
-| Devpost Submission | `TODO: add Devpost project link` |
+| Demo Video | `TODO: Add Loom / YouTube link` |
+| Devpost Submission | `TODO: Add Devpost link` |
 
 ---
 
-## What Evalora Does
+# The Problem
 
-Proposal evaluation is slow, inconsistent, and often opaque. Universities, accelerators, grant offices, and investment committees need faster review workflows without losing auditability, human oversight, or decision quality.
+Institutions review thousands of proposals manually every year.
 
-Evalora solves this by turning every proposal review into an observable multi-agent workflow:
+This process is:
+- slow
+- inconsistent
+- difficult to scale
+- expensive
+- operationally opaque
 
-1. Upload a proposal document.
-2. Extract and process the document.
-3. Run specialized Gemini-powered reviewer agents.
-4. Synthesize a final panel decision.
-5. Generate a structured PDF report.
-6. Save analysis history.
-7. Export agent telemetry and traces.
-8. Expose MCP-compatible trace inspection endpoints.
+Universities, accelerators, grant offices, and investment committees increasingly need AI-assisted review workflows that preserve transparency, auditability, and structured evaluation quality.
 
 ---
 
-## Core Capabilities
+# The Solution
 
-### Multi-Agent Reviewer Panel
+Evalora transforms proposal review into an observable multi-agent workflow.
 
-Evalora runs a specialized reviewer panel:
+A proposal is uploaded once, then specialized Gemini-powered reviewer agents:
+- analyze the document
+- evaluate scientific and commercial quality
+- detect operational and integrity risks
+- synthesize reviewer opinions
+- generate structured institutional reports
+- expose runtime telemetry and traceability
 
-| Agent | Role |
+The system is designed to move beyond chat into actionable institutional AI orchestration.
+
+---
+
+# Core Features
+
+## Multi-Agent Reviewer Panel
+
+Evalora orchestrates specialized reviewer agents:
+
+| Agent | Responsibility |
 |---|---|
-| Scientific Reviewer | Evaluates methodology, novelty, validation, feasibility, and technical rigor. |
-| Commercial Reviewer | Assesses market potential, business model, GTM readiness, scalability, and adoption risk. |
-| Risk Reviewer | Identifies operational, financial, compliance, technical, and execution risks. |
-| Integrity Reviewer | Checks unsupported claims, AI-likelihood, ethics, evidence quality, and governance gaps. |
-| Chair Agent | Synthesizes reviewer perspectives into a final score, recommendation, and feedback. |
+| Scientific Reviewer | Evaluates novelty, methodology, feasibility, technical rigor, and scientific validity |
+| Commercial Reviewer | Assesses business model, GTM readiness, scalability, and adoption potential |
+| Risk Reviewer | Identifies operational, execution, technical, financial, and compliance risks |
+| Integrity Reviewer | Detects unsupported claims, AI-likelihood, governance gaps, and evidence weaknesses |
+| Chair Agent | Produces the final institutional synthesis and recommendation |
 
 ---
 
-### Observable Agent Runtime
+## Observable Runtime
 
-Every analysis produces structured telemetry:
+Every analysis produces structured runtime telemetry including:
+- provider metadata
+- model metadata
+- trace identifiers
+- token usage
+- latency
+- execution spans
+- per-agent orchestration details
 
-```json
-{
-  "provider": "vertex-ai",
-  "model": "gemini-2.5-pro",
-  "agent_runtime": "revieweros",
-  "trace_id": "2de44c37-bde0-468c-ac6e-c6c0e9712e98",
-  "tokens": 2406,
-  "cost_usd": 0.000842,
-  "latency_seconds": 3.84,
-  "agent_traces": [
-    {
-      "agent": "Scientific Reviewer",
-      "status": "completed",
-      "confidence": 0.82,
-      "duration_ms": 1200
-    },
-    {
-      "agent": "Commercial Reviewer",
-      "status": "completed",
-      "confidence": 0.76,
-      "duration_ms": 980
-    },
-    {
-      "agent": "Risk Reviewer",
-      "status": "completed",
-      "confidence": 0.79,
-      "duration_ms": 870
-    },
-    {
-      "agent": "Integrity Reviewer",
-      "status": "completed",
-      "confidence": 0.91,
-      "duration_ms": 640
-    },
-    {
-      "agent": "Chair Agent",
-      "status": "completed",
-      "confidence": 0.88,
-      "duration_ms": 520
-    }
-  ]
-}
+Telemetry is visible inside the dashboard through:
+- Agent Trace panel
+- downloadable trace JSON
+- MCP-compatible runtime endpoints
+
+---
+
+## MCP-Compatible Trace Layer
+
+Evalora exposes MCP-compatible observability endpoints:
+
+```http
+GET /mcp/traces
+GET /mcp/traces/{trace_id}
