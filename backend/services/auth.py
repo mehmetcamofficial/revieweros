@@ -5,8 +5,19 @@ from fastapi import Header, HTTPException
 
 
 DEFAULT_DEMO_CODE = "revieweros-demo-2026"
+DEFAULT_JURY_DEMO_CODE = "evalora-demo-2026"
 
 ACCESS_CODE = os.getenv("REVIEWEROS_ACCESS_CODE", DEFAULT_DEMO_CODE)
+JURY_ACCESS_CODE = os.getenv("REVIEWEROS_JURY_ACCESS_CODE", DEFAULT_JURY_DEMO_CODE)
+
+VALID_ACCESS_CODES = {
+    code.strip()
+    for code in [
+        ACCESS_CODE,
+        JURY_ACCESS_CODE,
+    ]
+    if code and code.strip()
+}
 
 
 def normalize_user_id(value: Optional[str]) -> str:
@@ -30,13 +41,13 @@ def normalize_user_id(value: Optional[str]) -> str:
 
 
 def verify_access_code(access_code: Optional[str]) -> bool:
-    if not ACCESS_CODE:
+    if not VALID_ACCESS_CODES:
         return True
 
     if not access_code:
         return False
 
-    return access_code.strip() == ACCESS_CODE.strip()
+    return access_code.strip() in VALID_ACCESS_CODES
 
 
 def require_demo_auth(
