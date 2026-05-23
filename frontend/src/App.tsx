@@ -2103,6 +2103,26 @@ function LandingLogin({
               </select>
             </label>
 
+            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-4 text-sm text-cyan-50">
+              <p className="font-black uppercase tracking-[0.18em] text-cyan-200">
+                Jury Demo Access
+              </p>
+              <div className="mt-3 grid gap-2 text-slate-200">
+                <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-950/50 px-3 py-2">
+                  <span className="text-slate-400">Workspace ID</span>
+                  <code className="font-bold text-white">jury-demo</code>
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-950/50 px-3 py-2">
+                  <span className="text-slate-400">Access Code</span>
+                  <code className="font-bold text-white">evalora-demo-2026</code>
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-950/50 px-3 py-2">
+                  <span className="text-slate-400">Login Mode</span>
+                  <code className="font-bold text-white">Demo Workspace</code>
+                </div>
+              </div>
+            </div>
+
             {error && (
               <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm leading-6 text-red-200">
                 {error}
@@ -2453,6 +2473,46 @@ function PublicLandingPage({
               >
                 View Architecture
               </button>
+            </div>
+
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              {[
+                ["Gemini Agents", "Proposal review, risk scoring, and synthesis"],
+                ["Arize MCP-ready", "Trace-oriented observability configuration"],
+                ["Google Cloud", "Cloud Run backend with Firestore governance"],
+              ].map(([title, body]) => (
+                <div
+                  key={title}
+                  className="rounded-2xl border border-slate-800 bg-slate-950/55 p-4 backdrop-blur"
+                >
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">
+                    {title}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                    {body}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-5 backdrop-blur">
+              <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-slate-300">
+                <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-cyan-100">
+                  Proposal
+                </span>
+                <span className="text-cyan-400">→</span>
+                <span className="rounded-full border border-fuchsia-400/30 bg-fuchsia-400/10 px-4 py-2 text-fuchsia-100">
+                  Review Agents
+                </span>
+                <span className="text-cyan-400">→</span>
+                <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-emerald-100">
+                  PDF Report
+                </span>
+                <span className="text-cyan-400">→</span>
+                <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-amber-100">
+                  Observable Trace
+                </span>
+              </div>
             </div>
           </div>
 
