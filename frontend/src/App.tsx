@@ -5,6 +5,7 @@ import "./App.css";
 type AuthSession = {
   userId: string;
   accessCode: string;
+  mode?: "demo" | "admin";
 };
 
 type ReviewResult = {
@@ -55,9 +56,25 @@ type RecentAnalysis = {
 
 const API_URL = "https://revieweros-api-933794864277.europe-west1.run.app";
 const WS_URL = "wss://revieweros-api-933794864277.europe-west1.run.app/ws/analyze";
-const AUTH_STORAGE_KEY = "revieweros_auth_session";
+const AUTH_STORAGE_KEY = "revieweros_auth_session_v2";
 const WORKSPACE_MONTHLY_QUOTA = 25;
 const REQUEST_ACCESS_ENDPOINT = `${API_URL}/request-access`;
+
+const ADMIN_API_QUOTA_ENDPOINT = `${API_URL}/admin/quota`;
+
+const ADMIN_WORKSPACES_ENDPOINT = `${API_URL}/admin/workspaces`;
+const ADMIN_WORKSPACE_STATUS_ENDPOINT = `${API_URL}/admin/workspace-status`;
+const ADMIN_DEMO_CONTROL_ENDPOINT = `${API_URL}/admin/demo-control`;
+
+const ADMIN_USERS_ENDPOINT = `${API_URL}/admin/users`;
+const ADMIN_USERS_CREATE_ENDPOINT = `${API_URL}/admin/users/create`;
+const ADMIN_USERS_DISABLE_ENDPOINT = `${API_URL}/admin/users/disable`;
+const ADMIN_USERS_ACCESS_CODE_ENDPOINT = `${API_URL}/admin/users/access-code`;
+
+
+
+
+
 
 const SAMPLE_REPORT_URL =
   `${API_URL}/analyses/4e5fdf73-5a90-4f88-a265-3b3fab78ebad/report`;
@@ -98,6 +115,7 @@ function App() {
 
 
   const [authSession, setAuthSession] = useState<AuthSession | null>(() => {
+    window.localStorage.removeItem("revieweros_auth_session");
     try {
       const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
       if (!raw) return null;
@@ -144,9 +162,14 @@ function App() {
 
   useEffect(() => {
     if (!authSession) return;
+    if ((authSession as any)?.mode === "admin") return;
+    if ((authSession as any).mode === "admin") return;
+    if ((authSession as any).mode === "admin") return;
 
     loadRecentAnalyses();
-    bootSharedReport();
+    if ((authSession as any)?.mode !== "admin") {
+      bootSharedReport();
+    }
 
     const handleRouteChange = () => {
       bootSharedReport(true);
@@ -237,7 +260,11 @@ function App() {
     }
   }
 
-  async function handleLogin(userId: string, accessCode: string) {
+  async function handleLogin(
+    userId: string,
+    accessCode: string,
+    mode: "demo" | "admin" = "demo",
+  ) {
     const cleanedUserId = userId.trim();
     const cleanedAccessCode = accessCode.trim();
 
@@ -250,12 +277,19 @@ function App() {
     setAuthError(null);
 
     try {
-      const response = await fetch(`${API_URL}/auth/check`, {
-        headers: {
-          "X-ReviewerOS-User-Id": cleanedUserId,
-          "X-ReviewerOS-Access-Code": cleanedAccessCode,
-        },
-      });
+      const response =
+        mode === "admin"
+          ? await fetch(`${API_URL}/admin/check`, {
+              headers: {
+                "X-ReviewerOS-Access-Code": cleanedAccessCode,
+              },
+            })
+          : await fetch(`${API_URL}/auth/check`, {
+              headers: {
+                "X-ReviewerOS-User-Id": cleanedUserId,
+                "X-ReviewerOS-Access-Code": cleanedAccessCode,
+              },
+            });
 
       const json = await response.json();
 
@@ -265,7 +299,8 @@ function App() {
 
       const nextSession = {
         userId: json.user_id || cleanedUserId,
-        accessCode: cleanedAccessCode,
+        accessCode: cleanedAccessCode.trim(),
+        mode,
       };
 
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextSession));
@@ -331,6 +366,8 @@ function App() {
   }
 
   async function loadRecentAnalyses() {
+    if ((authSession as any)?.mode === "admin") return;
+    if ((authSession as any)?.mode === "admin") return;
     if (!authSession) return;
 
     try {
@@ -446,7 +483,9 @@ function App() {
         socket.close();
 
         await saveAnalysisToHistory(completedData);
+        if (authSession?.mode !== "admin") {
         await loadRecentAnalyses();
+      }
 
         showToast("Analysis completed and saved ✓");
 
@@ -610,7 +649,9 @@ function App() {
         },
       ]);
 
-      await loadRecentAnalyses();
+      if (authSession?.mode !== "admin") {
+        await loadRecentAnalyses();
+      }
 
       showToast("Analysis completed and saved ✓");
 
@@ -680,7 +721,9 @@ function App() {
       }
 
       await downloadBlobResponse(response, `${data.job_id}-revieweros-report.pdf`);
-      await loadRecentAnalyses();
+      if (authSession?.mode !== "admin") {
+        await loadRecentAnalyses();
+      }
 
       showToast("PDF report downloaded ✓");
     } catch (error) {
@@ -923,6 +966,38 @@ function App() {
     );
   }
 
+  if (authSession?.mode === "admin") {
+    return (
+      <div className="min-h-screen overflow-x-hidden bg-slate-950 px-6 py-8 text-white md:px-8">
+        {toast && (
+          <div className="fixed right-5 top-5 z-50 rounded-2xl border border-emerald-500/40 bg-emerald-500/15 px-5 py-3 text-sm font-semibold text-emerald-200 shadow-2xl backdrop-blur">
+            {toast}
+          </div>
+        )}
+
+        <div className="mx-auto max-w-[1400px]">
+          <header className="mb-8 flex flex-col gap-5 rounded-3xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl md:flex-row md:items-center md:justify-between">
+            <div>
+              <SharedBrandLogo compact />
+              <p className="mt-3 text-slate-400">
+                Admin Console · Workspace quota and usage controls
+              </p>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="rounded-full border border-slate-700 px-5 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-800"
+            >
+              Logout
+            </button>
+          </header>
+
+          <AdminControlPanel authSession={authSession} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-slate-950 text-white">
       {toast && (
@@ -992,7 +1067,8 @@ function App() {
         <TelemetryBar telemetry={effectiveTelemetry} loading={loading} events={events} />
 
         <section className="mt-8 grid gap-6 xl:grid-cols-[460px_minmax(0,1fr)]">
-          <aside className="space-y-6">
+
+          <aside className="relative z-10 space-y-6">
             <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
               <h2 className="text-2xl font-bold">Upload Application</h2>
 
@@ -1699,12 +1775,17 @@ function LandingLogin({
   loading,
   error,
 }: {
-  onLogin: (userId: string, accessCode: string) => void;
+  onLogin: (
+    userId: string,
+    accessCode: string,
+    mode: "demo" | "admin",
+  ) => void;
   loading: boolean;
   error: string | null;
 }) {
   const [userId, setUserId] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [loginMode, setLoginMode] = useState<"demo" | "admin">("demo");
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestEmail, setRequestEmail] = useState("");
@@ -2002,10 +2083,24 @@ function LandingLogin({
               <input
                 value={accessCode}
                 onChange={(event) => setAccessCode(event.target.value)}
-                placeholder="Enter access code"
+                id="access-code" name="accessCode" placeholder="Enter access code"
                 type="password"
                 className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950/80 px-5 py-4 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400/50"
               />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-bold text-slate-300">Login Mode</span>
+              <select
+                value={loginMode}
+                onChange={(event) =>
+                  setLoginMode(event.target.value as "demo" | "admin")
+                }
+                className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950/80 px-5 py-4 text-white outline-none transition focus:border-cyan-400/50"
+              >
+                <option value="demo">Demo Workspace</option>
+                <option value="admin">Admin Console</option>
+              </select>
             </label>
 
             {error && (
@@ -2015,7 +2110,7 @@ function LandingLogin({
             )}
 
             <button
-              onClick={() => onLogin(userId, accessCode)}
+              onClick={() => onLogin(userId, accessCode, loginMode)}
               disabled={loading}
               className="w-full rounded-2xl bg-white px-5 py-3 text-lg font-black text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -3839,6 +3934,825 @@ function RequestAccessModal({
             {submitting ? "Submitting..." : "Submit request"}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+
+function AdminControlPanel({
+  authSession,
+}: {
+  authSession: AuthSession;
+}) {
+  const fallbackItems: any[] = [];
+
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [targetUser, setTargetUser] = useState("jury-demo");
+  const [quota, setQuota] = useState("25");
+  const [search, setSearch] = useState("");
+  const [demoDisabled, setDemoDisabled] = useState(false);
+  const [adminMessage, setAdminMessage] = useState("");
+  const [adminCode, setAdminCode] = useState(authSession.accessCode || "");
+  const [activeTab, setActiveTab] = useState("Genel Bakış");
+  const [users, setUsers] = useState<any[]>([]);
+  const [newUserId, setNewUserId] = useState("");
+  const [newUserCode, setNewUserCode] = useState("");
+  const [newUserRole, setNewUserRole] = useState("demo");
+  const [newUserLimit, setNewUserLimit] = useState("25");
+  const [accessCodeUserId, setAccessCodeUserId] = useState("");
+  const [accessCodeValue, setAccessCodeValue] = useState("");
+
+  function adminHeaders(extra: Record<string, string> = {}) {
+    return {
+      ...extra,
+      "X-ReviewerOS-Access-Code": adminCode.trim(),
+    };
+  }
+
+  async function loadUsers() {
+    if (!adminCode.trim()) return;
+
+    try {
+      const response = await fetch(ADMIN_USERS_ENDPOINT, {
+        headers: adminHeaders(),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "Failed to load users.");
+      }
+
+      setUsers(json.items || []);
+    } catch (error: any) {
+      setAdminMessage(error?.message || "Failed to load users.");
+    }
+  }
+
+  async function loadWorkspaces() {
+    if (!adminCode.trim()) {
+      setAdminMessage("Admin access code is missing.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(ADMIN_WORKSPACES_ENDPOINT, {
+        headers: adminHeaders(),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "Failed to load workspaces.");
+      }
+
+      setItems(json.items || fallbackItems);
+      setDemoDisabled(Boolean(json.demo_control?.demo_disabled));
+    } catch (error) {
+      console.error(error);
+      setItems(fallbackItems);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadWorkspaces();
+    loadUsers();
+  }, []);
+
+  async function createUser() {
+    if (!newUserId.trim() || !newUserCode.trim()) {
+      setAdminMessage("Kullanıcı ID ve access code gerekli.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setAdminMessage(`Creating user ${newUserId.trim()}...`);
+
+      const response = await fetch(ADMIN_USERS_CREATE_ENDPOINT, {
+        method: "POST",
+        headers: adminHeaders({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({
+          user_id: newUserId.trim(),
+          access_code: newUserCode.trim(),
+          role: newUserRole.trim() || "demo",
+          limit: Number(newUserLimit || 25),
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "User creation failed.");
+      }
+
+      setNewUserId("");
+      setNewUserCode("");
+      setNewUserRole("demo");
+      setNewUserLimit("25");
+
+      await loadUsers();
+      await loadWorkspaces();
+
+      setAdminMessage(`${json.user.user_id} kullanıcısı oluşturuldu.`);
+    } catch (error: any) {
+      setAdminMessage(error?.message || "User creation failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function disableUser(userId: string, disabled: boolean) {
+    try {
+      setLoading(true);
+
+      const response = await fetch(ADMIN_USERS_DISABLE_ENDPOINT, {
+        method: "POST",
+        headers: adminHeaders({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({
+          user_id: userId,
+          disabled,
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "User status update failed.");
+      }
+
+      await loadUsers();
+      await loadWorkspaces();
+
+      setAdminMessage(`${userId} ${disabled ? "kapatıldı" : "açıldı"}.`);
+    } catch (error: any) {
+      setAdminMessage(error?.message || "User status update failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function deleteUser(userId: string) {
+    const confirmed = window.confirm(`${userId} kullanıcısını silmek istiyor musun?`);
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(`${API_URL}/admin/users/delete/${userId}`, {
+        method: "DELETE",
+        headers: adminHeaders(),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "User delete failed.");
+      }
+
+      await loadUsers();
+      await loadWorkspaces();
+
+      setAdminMessage(`${userId} kullanıcısı silindi.`);
+    } catch (error: any) {
+      setAdminMessage(error?.message || "User delete failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function changeUserAccessCode() {
+    if (!accessCodeUserId.trim() || !accessCodeValue.trim()) {
+      setAdminMessage("Access code değiştirmek için kullanıcı ve yeni kod gerekli.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(ADMIN_USERS_ACCESS_CODE_ENDPOINT, {
+        method: "POST",
+        headers: adminHeaders({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({
+          user_id: accessCodeUserId.trim(),
+          access_code: accessCodeValue.trim(),
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "Access code update failed.");
+      }
+
+      setAccessCodeUserId("");
+      setAccessCodeValue("");
+
+      await loadUsers();
+
+      setAdminMessage(`${json.user.user_id} access code güncellendi.`);
+    } catch (error: any) {
+      setAdminMessage(error?.message || "Access code update failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updateQuota() {
+    setAdminMessage(`Sending quota update for ${targetUser.trim()}...`);
+
+    if (!adminCode.trim()) {
+      setAdminMessage("Admin access code is missing.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(ADMIN_API_QUOTA_ENDPOINT, {
+        method: "POST",
+        headers: adminHeaders({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({
+          user_id: targetUser,
+          limit: Number(quota),
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "Quota update failed.");
+      }
+
+      await loadWorkspaces();
+      alert(`Quota updated for ${targetUser}`);
+    } catch (error: any) {
+      alert(error?.message || "Quota update failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function quickUpdateQuota(userId: string, nextLimit: number) {
+    const safeLimit = Math.max(0, Number(nextLimit || 0));
+
+    try {
+      setLoading(true);
+      setAdminMessage(`${userId} quota ${safeLimit} olarak güncelleniyor...`);
+
+      const response = await fetch(ADMIN_API_QUOTA_ENDPOINT, {
+        method: "POST",
+        headers: adminHeaders({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({
+          user_id: userId,
+          limit: safeLimit,
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "Quota update failed.");
+      }
+
+      await loadWorkspaces();
+
+      setTargetUser(userId);
+      setQuota(String(safeLimit));
+      setAdminMessage(`${userId} quota ${safeLimit} olarak güncellendi.`);
+    } catch (error: any) {
+      setAdminMessage(error?.message || "Quota update failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resetUsage(userId: string) {
+    try {
+      setLoading(true);
+
+      const response = await fetch(`${API_URL}/admin/reset-usage/${userId}`, {
+        method: "POST",
+        headers: adminHeaders(),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "Usage reset failed.");
+      }
+
+      await loadWorkspaces();
+      setAdminMessage(`Usage reset for ${userId}.`);
+    } catch (error: any) {
+      setAdminMessage(error?.message || "Usage reset failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function toggleWorkspace(userId: string, disabled: boolean) {
+    try {
+      setLoading(true);
+
+      const response = await fetch(ADMIN_WORKSPACE_STATUS_ENDPOINT, {
+        method: "POST",
+        headers: adminHeaders({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({
+          user_id: userId,
+          disabled,
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "Workspace update failed.");
+      }
+
+      await loadWorkspaces();
+      setAdminMessage(`${userId} ${disabled ? "disabled" : "enabled"}.`);
+    } catch (error: any) {
+      setAdminMessage(error?.message || "Workspace update failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function toggleDemoControl() {
+    try {
+      setLoading(true);
+
+      const response = await fetch(ADMIN_DEMO_CONTROL_ENDPOINT, {
+        method: "POST",
+        headers: adminHeaders({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({
+          demo_disabled: !demoDisabled,
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.detail || "Demo control update failed.");
+      }
+
+      setDemoDisabled(Boolean(json.demo_control?.demo_disabled));
+      setAdminMessage(`Demo access ${!demoDisabled ? "disabled" : "enabled"}.`);
+    } catch (error: any) {
+      setAdminMessage(error?.message || "Demo control update failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const filteredItems = items.filter((item) =>
+    item.user_id.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalQuota = items.reduce((sum, item) => sum + Number(item.limit || 0), 0);
+  const totalUsed = items.reduce((sum, item) => sum + Number(item.used || 0), 0);
+  const activeCount = items.filter((item) => !item.disabled).length;
+
+  const telemetryEvents = [
+    "Vertex runtime healthy · Gemini 2.5 Pro ready",
+    "MCP trace stream active",
+    "Firestore quota store synchronized",
+    "PDF report generator online",
+    "Workspace safety checks enabled",
+  ];
+
+  return (
+    <div
+      className="relative z-[9999] grid gap-8 xl:grid-cols-[280px_minmax(0,1fr)] pointer-events-auto"
+      style={{ pointerEvents: "auto" }}
+    >
+      <aside className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-2xl">
+        <p className="mb-5 text-xs font-black uppercase tracking-[0.28em] text-cyan-300">
+          Admin Kontrol Paneli
+        </p>
+
+        {["Genel Bakış", "Workspace Yönetimi", "Telemetry", "Runtime", "Quota", "Erişim Talepleri", "Ayarlar"].map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => {
+              setActiveTab(item);
+              setAdminMessage(`${item} sekmesi açıldı.`);
+            }}
+            className={`mb-2 w-full rounded-2xl px-4 py-3 text-left text-sm font-bold transition ${
+              activeTab === item
+                ? "bg-cyan-500/15 text-cyan-200 ring-1 ring-cyan-400/30"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+            }`}
+          >
+            {item}
+          </button>
+        ))}
+
+        <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300">
+            System
+          </p>
+          <p className="mt-2 text-2xl font-black text-white">Healthy</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Cloud Run · Vertex AI · Firestore
+          </p>
+        </div>
+      </aside>
+
+      <div className="space-y-8">
+        <section className={`${activeTab === "Erişim Talepleri" ? "hidden" : ""} relative z-10 rounded-3xl border border-fuchsia-500/30 bg-fuchsia-500/10 p-6 shadow-2xl backdrop-blur`} style={{ display: activeTab === "Erişim Talepleri" ? "none" : undefined }}>
+          <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <div className="text-xs font-black uppercase tracking-[0.32em] text-fuchsia-300">
+                Admin Console
+              </div>
+
+              <h2 className="mt-2 text-4xl font-black text-white">
+                {activeTab === "Genel Bakış" && "ReviewerOS Control Center"}
+                {activeTab === "Workspace Yönetimi" && "Workspace Yönetimi"}
+                {activeTab === "Telemetry" && "Telemetry İzleme"}
+                {activeTab === "Runtime" && "Runtime Sağlığı"}
+                {activeTab === "Quota" && "Quota Yönetimi"}
+                {activeTab === "Erişim Talepleri" && "Erişim Talepleri"}
+                {activeTab === "Ayarlar" && "Admin Ayarları"}
+              </h2>
+
+              <p className="mt-3 max-w-2xl text-lg leading-8 text-slate-300">
+                {activeTab === "Genel Bakış" && "Manage workspaces, quotas, runtime access, telemetry safety, and demo infrastructure controls."}
+                {activeTab === "Workspace Yönetimi" && "Workspace kayıtlarını ara, quota değiştir, usage resetle ve workspace durumunu yönet."}
+                {activeTab === "Telemetry" && "MCP traces, runtime events, agent latency ve gözlemlenebilirlik akışını takip et."}
+                {activeTab === "Runtime" && "Cloud Run, Vertex AI, Firestore ve PDF runtime sağlığını izle."}
+                {activeTab === "Quota" && "Demo, jury ve kurum workspace quota limitlerini yönet."}
+                {activeTab === "Erişim Talepleri" && "Request Access formlarını ve demo taleplerini incele."}
+                {activeTab === "Ayarlar" && "Global demo kill switch ve admin güvenlik kontrollerini yönet."}
+              </p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-4">
+              {[
+                ["Workspaces", items.length, "text-white"],
+                ["Active", activeCount, "text-emerald-300"],
+                ["Total Quota", totalQuota, "text-cyan-300"],
+                ["Used", totalUsed, "text-amber-300"],
+              ].map(([label, value, color]) => (
+                <div key={label} className="rounded-2xl border border-slate-700 bg-slate-950/80 p-5">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{label}</p>
+                  <p className={`mt-2 text-3xl font-black ${color}`}>{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className={`${activeTab === "Erişim Talepleri" ? "hidden" : ""} relative z-10 rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl backdrop-blur`}>
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <div className="mb-2 inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-cyan-200">
+                  {activeTab}
+                </div>
+
+                <h3 className="text-2xl font-black text-white">
+                  {activeTab === "Genel Bakış" ? "Workspace Management" : activeTab}
+                </h3>
+                <p className="mt-2 text-slate-400">
+                  Her workspace için quota seç, artır/azalt, usage resetle veya manuel limit gir.
+                </p>
+
+                <input
+                  value={adminCode}
+                  onChange={(e) => setAdminCode(e.target.value)}
+                  placeholder="Admin access code"
+                  type="password"
+                  className="mt-4 w-full max-w-xl rounded-2xl border border-fuchsia-500/30 bg-slate-950/90 px-4 py-3 text-white outline-none"
+                />
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-4">
+                <input
+                  value={targetUser}
+                  onChange={(e) => setTargetUser(e.target.value)}
+                  placeholder="workspace id"
+                  className="rounded-2xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-white outline-none"
+                />
+
+                <input
+                  value={quota}
+                  onChange={(e) => setQuota(e.target.value)}
+                  placeholder="quota"
+                  className="rounded-2xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-white outline-none"
+                />
+
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="search workspace"
+                  className="rounded-2xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-white outline-none"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log("Update quota clicked");
+                    updateQuota();
+                  }}
+                  disabled={loading}
+                  className="relative z-[9999] rounded-2xl bg-fuchsia-500 px-5 py-3 font-black text-white transition hover:scale-[1.02]"
+                >
+                  Update Quota
+                </button>
+              </div>
+            </div>
+
+            <div className={`mt-6 rounded-2xl border px-5 py-4 text-sm font-bold ${
+              adminMessage
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                : "border-slate-700 bg-slate-950/70 text-slate-400"
+            }`}>
+              {adminMessage || "Admin panel ready. Choose an action."}
+            </div>
+
+            <div className="mt-8 overflow-x-auto rounded-3xl border border-slate-800">
+              <table className="min-w-[1080px] w-full border-collapse">
+                <thead className="bg-slate-950/90">
+                  <tr className="text-left text-xs uppercase tracking-[0.22em] text-slate-400">
+                    <th className="px-6 py-4">Workspace</th>
+                    <th className="px-6 py-4">Used</th>
+                    <th className="px-6 py-4">Limit</th>
+                    <th className="px-6 py-4">Remaining</th>
+                    <th className="px-6 py-4">Actions</th>
+                    <th className="px-6 py-4">Status</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {filteredItems.map((item) => (
+                    <tr key={item.user_id} className="border-t border-slate-800 bg-slate-950/40">
+                      <td className="px-6 py-5 font-black text-white">{item.user_id}</td>
+                      <td className="px-6 py-5 text-slate-300">{item.used}</td>
+                      <td className="px-6 py-5 text-cyan-300">{item.limit}</td>
+                      <td className="px-6 py-5 text-emerald-300">{item.remaining}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex min-w-[280px] flex-nowrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => quickUpdateQuota(item.user_id, Number(item.limit || 0) - 5)}
+                            className="rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800"
+                          >
+                            -5
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => quickUpdateQuota(item.user_id, Number(item.limit || 0) + 5)}
+                            className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-500/20"
+                          >
+                            +5
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => resetUsage(item.user_id)}
+                            className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs font-bold text-yellow-100 hover:bg-yellow-500/20"
+                          >
+                            Reset
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleWorkspace(item.user_id, !item.disabled)}
+                            className={`rounded-lg px-3 py-2 text-xs font-bold transition ${
+                              item.disabled ? "bg-emerald-500/20 text-emerald-200" : "bg-red-500/20 text-red-200"
+                            }`}
+                          >
+                            {item.disabled ? "Enable" : "Disable"}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
+                          item.disabled ? "bg-red-500/20 text-red-200" : "bg-emerald-500/20 text-emerald-200"
+                        }`}>
+                          {item.disabled ? "disabled" : "active"}
+                        </span>
+                      </td>
+
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+
+          {activeTab === "Erişim Talepleri" && (
+
+          <section className="xl:col-span-2 rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl backdrop-blur" style={{ display: activeTab !== "Erişim Talepleri" ? "none" : undefined }}>
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div>
+                <div className="mb-2 inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-emerald-200">
+                  Kullanıcı Yönetimi
+                </div>
+
+                <h3 className="text-2xl font-black text-white">
+                  Users / Access Control
+                </h3>
+
+                <p className="mt-2 max-w-2xl text-slate-400">
+                  Kullanıcı oluştur, kapat/aç, access code değiştir ve silebilirsin.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  loadUsers();
+                  loadWorkspaces();
+                  setAdminMessage("Kullanıcı listesi yenilendi.");
+                }}
+                className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-5 py-3 text-sm font-black text-cyan-200 transition hover:bg-cyan-500/20"
+              >
+                Refresh Users
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-5 lg:grid-cols-2">
+              <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                <h4 className="text-lg font-black text-white">Yeni Kullanıcı Oluştur</h4>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <input value={newUserId} onChange={(e) => setNewUserId(e.target.value)} placeholder="user id örn. client-b" className="rounded-2xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-white outline-none" />
+                  <input value={newUserCode} onChange={(e) => setNewUserCode(e.target.value)} placeholder="access code" className="rounded-2xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-white outline-none" />
+                  <input value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)} placeholder="role" className="rounded-2xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-white outline-none" />
+                  <input value={newUserLimit} onChange={(e) => setNewUserLimit(e.target.value)} placeholder="quota" className="rounded-2xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-white outline-none" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={createUser}
+                  disabled={loading}
+                  className="mt-4 w-full rounded-2xl bg-emerald-500 px-5 py-3 font-black text-slate-950 transition hover:scale-[1.01]"
+                >
+                  Create User
+                </button>
+              </div>
+
+              <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+                <h4 className="text-lg font-black text-white">Access Code Değiştir</h4>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <input value={accessCodeUserId} onChange={(e) => setAccessCodeUserId(e.target.value)} placeholder="user id" className="rounded-2xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-white outline-none" />
+                  <input value={accessCodeValue} onChange={(e) => setAccessCodeValue(e.target.value)} placeholder="new access code" className="rounded-2xl border border-slate-700 bg-slate-950/90 px-4 py-3 text-white outline-none" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={changeUserAccessCode}
+                  disabled={loading}
+                  className="mt-4 w-full rounded-2xl border border-fuchsia-400/40 bg-fuchsia-500/15 px-5 py-3 font-black text-fuchsia-100 transition hover:bg-fuchsia-500/25"
+                >
+                  Change Access Code
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 overflow-x-auto rounded-3xl border border-slate-800">
+              <table className="min-w-[900px] w-full border-collapse">
+                <thead className="bg-slate-950/90">
+                  <tr className="text-left text-xs uppercase tracking-[0.22em] text-slate-400">
+                    <th className="px-6 py-4">User</th>
+                    <th className="px-6 py-4">Role</th>
+                    <th className="px-6 py-4">Access Code</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {users.map((user: any) => (
+                    <tr key={user.user_id} className="border-t border-slate-800 bg-slate-950/40">
+                      <td className="px-6 py-5 font-black text-white">{user.user_id}</td>
+                      <td className="px-6 py-5 text-cyan-300">{user.role}</td>
+                      <td className="px-6 py-5 text-slate-300">{user.has_access_code ? "Configured" : "Missing"}</td>
+                      <td className="px-6 py-5">
+                        <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
+                          user.disabled ? "bg-red-500/20 text-red-200" : "bg-emerald-500/20 text-emerald-200"
+                        }`}>
+                          {user.disabled ? "disabled" : "active"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex flex-nowrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => disableUser(user.user_id, !user.disabled)}
+                            className={`rounded-xl px-3 py-2 text-xs font-bold transition ${
+                              user.disabled ? "bg-emerald-500/20 text-emerald-200" : "bg-red-500/20 text-red-200"
+                            }`}
+                          >
+                            {user.disabled ? "Enable" : "Disable"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => deleteUser(user.user_id)}
+                            className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-200 transition hover:bg-red-500/20"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {users.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-10 text-center text-slate-500">
+                        Kullanıcı bulunamadı.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          )}
+
+          <aside className="relative z-10 space-y-6" style={{ display: activeTab === "Erişim Talepleri" ? "none" : undefined }}>
+            <div className="rounded-3xl border border-cyan-500/20 bg-cyan-500/10 p-6">
+              <div className={`${activeTab === "Erişim Talepleri" || activeTab === "Ayarlar" ? "hidden" : ""} flex items-center justify-between`}>
+                <h3 className="text-xl font-black text-white">Live Runtime</h3>
+                <span className="h-3 w-3 animate-pulse rounded-full bg-emerald-300 shadow-[0_0_18px_rgba(52,211,153,0.9)]" />
+              </div>
+
+              <div className="mt-5 space-y-3">
+                {telemetryEvents.map((event, index) => (
+                  <div key={event} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                    <p className="text-xs font-mono text-cyan-200">
+                      {`18:${String(30 + index).padStart(2, "0")}:${String(index * 7).padStart(2, "0")}`}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-300">{event}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-red-500/25 bg-red-500/10 p-6">
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-red-300">
+                Danger Zone
+              </p>
+
+              <h3 className="mt-2 text-2xl font-black text-white">
+                Demo Kill Switch
+              </h3>
+
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                Immediately disable or re-enable demo access if public traffic,
+                abuse, or Vertex cost risk increases.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                console.log("Demo control clicked");
+                toggleDemoControl();
+              }}
+                className={`mt-5 w-full rounded-2xl px-5 py-4 font-black transition ${
+                  demoDisabled
+                    ? "bg-emerald-500 text-slate-950"
+                    : "bg-red-500 text-white"
+                }`}
+              >
+                {demoDisabled ? "Enable Demo Access" : "Disable Demo Access"}
+              </button>
+            </div>
+          </aside>
+        </section>
       </div>
     </div>
   );

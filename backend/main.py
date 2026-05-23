@@ -3,11 +3,11 @@ import os
 import time
 import uuid
 
-from fastapi import Depends, FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from services.auth import optional_user_id, require_demo_auth
+from services.auth import optional_user_id, require_demo_auth, require_admin_auth
 from services.firestore_store import (
     get_analysis,
     list_analyses,
@@ -470,6 +470,19 @@ from services.quota_store import (
     get_workspace_quota,
     assert_workspace_quota_available,
     increment_workspace_quota,
+    set_workspace_limit,
+    reset_workspace_usage,
+    list_workspace_quotas,
+    set_workspace_disabled,
+    get_demo_control,
+    set_demo_control,
+)
+from services.workspace_user_store import (
+    list_workspace_users,
+    create_workspace_user,
+    delete_workspace_user,
+    set_workspace_user_disabled,
+    update_workspace_user_access_code,
 )
 
 
@@ -506,11 +519,6 @@ async def request_access(payload: AccessRequestPayload):
 
         raise HTTPException(status_code=500, detail=f"Request access failed: {exc}")
 
-
-# ---------------------------------------------------------------------
-# Workspace quota endpoint
-# ---------------------------------------------------------------------
-@app.get("/quota")
 
 @app.get("/mcp/traces")
 async def mcp_list_traces(
@@ -579,6 +587,10 @@ async def mcp_trace_detail(
     }
 
 
+# ---------------------------------------------------------------------
+# Workspace quota endpoint
+# ---------------------------------------------------------------------
+@app.get("/quota")
 async def get_quota(
     x_revieweros_user_id: str | None = Header(default=None),
 ):
@@ -599,3 +611,219 @@ async def get_quota(
             detail=f"Failed to load workspace quota: {exc}",
         )
 
+
+
+# ---------------------------------------------------------------------
+# Admin endpoints
+# ---------------------------------------------------------------------
+
+from pydantic import BaseModel
+
+
+class AdminQuotaPayload(BaseModel):
+    user_id: str
+    limit: int
+
+
+@app.post("/admin/quota")
+async def admin_set_quota(
+    payload: AdminQuotaPayload,
+    admin: str = Depends(require_admin_auth),
+):
+    quota = set_workspace_limit(
+        user_id=payload.user_id,
+        limit=payload.limit,
+    )
+
+    return {
+        "ok": True,
+        "quota": quota,
+    }
+
+
+@app.post("/admin/reset-usage/{user_id}")
+async def admin_reset_usage(
+    user_id: str,
+    admin: str = Depends(require_admin_auth),
+):
+    quota = reset_workspace_usage(user_id)
+
+    return {
+        "ok": True,
+        "quota": quota,
+    }
+
+
+class AdminWorkspaceStatusPayload(BaseModel):
+    user_id: str
+    disabled: bool
+
+
+class AdminDemoControlPayload(BaseModel):
+    demo_disabled: bool
+
+
+@app.get("/admin/workspaces")
+async def admin_list_workspaces(
+    admin: str = Depends(require_admin_auth),
+):
+    return {
+        "ok": True,
+        "items": list_workspace_quotas(),
+        "demo_control": get_demo_control(),
+    }
+
+
+@app.post("/admin/workspace-status")
+async def admin_workspace_status(
+    payload: AdminWorkspaceStatusPayload,
+    admin: str = Depends(require_admin_auth),
+):
+    quota = set_workspace_disabled(
+        user_id=payload.user_id,
+        disabled=payload.disabled,
+    )
+
+    return {
+        "ok": True,
+        "quota": quota,
+    }
+
+
+@app.get("/admin/demo-control")
+async def admin_get_demo_control(
+    admin: str = Depends(require_admin_auth),
+):
+    return {
+        "ok": True,
+        "demo_control": get_demo_control(),
+    }
+
+
+@app.post("/admin/demo-control")
+async def admin_set_demo_control(
+    payload: AdminDemoControlPayload,
+    admin: str = Depends(require_admin_auth),
+):
+    return {
+        "ok": True,
+        "demo_control": set_demo_control(payload.demo_disabled),
+    }
+
+
+@app.get("/admin/check")
+async def admin_check(
+    admin: str = Depends(require_admin_auth),
+):
+    return {
+        "ok": True,
+        "role": "admin",
+    }
+
+
+class AdminCreateUserPayload(BaseModel):
+    user_id: str
+    access_code: str
+    limit: int = 25
+    role: str = "demo"
+    disabled: bool = False
+
+
+class AdminUserStatusPayload(BaseModel):
+    user_id: str
+    disabled: bool
+
+
+class AdminUserAccessCodePayload(BaseModel):
+    user_id: str
+    access_code: str
+
+
+@app.get("/admin/users")
+async def admin_list_users(
+    admin: str = Depends(require_admin_auth),
+):
+    return {
+        "ok": True,
+        "items": list_workspace_users(),
+    }
+
+
+@app.post("/admin/users/create")
+async def admin_create_user(
+    payload: AdminCreateUserPayload,
+    admin: str = Depends(require_admin_auth),
+):
+    user = create_workspace_user(
+        user_id=payload.user_id,
+        access_code=payload.access_code,
+        role=payload.role,
+        disabled=payload.disabled,
+    )
+
+    quota = set_workspace_limit(
+        user_id=payload.user_id,
+        limit=payload.limit,
+    )
+
+    return {
+        "ok": True,
+        "user": user,
+        "quota": quota,
+    }
+
+
+@app.delete("/admin/users/delete/{user_id}")
+async def admin_delete_user(
+    user_id: str,
+    admin: str = Depends(require_admin_auth),
+):
+    deleted = delete_workspace_user(user_id)
+
+    try:
+        set_workspace_disabled(user_id=user_id, disabled=True)
+    except Exception:
+        pass
+
+    return {
+        "ok": True,
+        "deleted": deleted,
+    }
+
+
+@app.post("/admin/users/disable")
+async def admin_disable_user(
+    payload: AdminUserStatusPayload,
+    admin: str = Depends(require_admin_auth),
+):
+    user = set_workspace_user_disabled(
+        user_id=payload.user_id,
+        disabled=payload.disabled,
+    )
+
+    quota = set_workspace_disabled(
+        user_id=payload.user_id,
+        disabled=payload.disabled,
+    )
+
+    return {
+        "ok": True,
+        "user": user,
+        "quota": quota,
+    }
+
+
+@app.post("/admin/users/access-code")
+async def admin_change_user_access_code(
+    payload: AdminUserAccessCodePayload,
+    admin: str = Depends(require_admin_auth),
+):
+    user = update_workspace_user_access_code(
+        user_id=payload.user_id,
+        access_code=payload.access_code,
+    )
+
+    return {
+        "ok": True,
+        "user": user,
+    }
