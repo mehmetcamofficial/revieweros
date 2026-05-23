@@ -219,3 +219,5 @@ __marimo__/
 .DS_Store
 backend/uploads/
 backend/reports/
+# Local patch backups
+*.backup-before-*
