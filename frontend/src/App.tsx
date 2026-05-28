@@ -1064,6 +1064,10 @@ function App() {
       </header>
 
       <main className="mx-auto max-w-[1700px] px-6 py-8 md:px-8 md:py-10">
+
+        
+
+
         <TelemetryBar telemetry={effectiveTelemetry} loading={loading} events={events} />
 
         <section className="mt-8 grid gap-6 xl:grid-cols-[460px_minmax(0,1fr)]">
@@ -1112,7 +1116,9 @@ function App() {
                   type="file"
                   accept=".txt,.pdf,.docx,.md"
                   onChange={(event) => {
-                    setFile(event.target.files?.[0] || null);
+                    const selectedUploadFile = event.currentTarget.files?.[0] || null;
+                    setFile(selectedUploadFile);
+                    event.currentTarget.value = "";
                     setSelectedHistoryJobId(null);
                   }}
                   className="hidden"
@@ -1981,7 +1987,7 @@ function LandingLogin({
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto grid max-w-[1700px] gap-8 px-6 py-10 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:py-14">
+      <main className="relative z-10 mx-auto grid max-w-[1700px] items-start gap-8 px-6 py-10 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:py-14 lg:[&>*:first-child]:sticky lg:[&>*:first-child]:top-6 lg:[&>*:first-child]:self-start lg:[&>*:first-child]:max-h-[calc(100vh-3rem)] lg:[&>*:first-child]:overflow-y-auto lg:[&>*:first-child]:rounded-[2rem] lg:[&>*:first-child]:border lg:[&>*:first-child]:border-slate-800/80 lg:[&>*:first-child]:bg-slate-950/35 lg:[&>*:first-child]:p-4 lg:[&>*:first-child]:min-h-[calc(100vh-4rem)]">
         <section className="space-y-8">
           <div className="rounded-[2rem] border border-cyan-400/15 bg-slate-950/60 p-7 shadow-[0_0_40px_rgba(34,211,238,0.08)] backdrop-blur-xl">
             <p className="text-sm font-black uppercase tracking-[0.35em] text-cyan-300">
@@ -2872,6 +2878,30 @@ function WorkspaceQuotaCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-bold text-white">Workspace Quota</h3>
+          <div className="mt-4 rounded-2xl border border-emerald-900/50 bg-emerald-950/20 p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-300">
+              Runtime Intelligence Mini
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-xl bg-slate-900/70 p-3">
+                <p className="text-slate-500">Trace Status</p>
+                <p className="font-bold text-emerald-300">Observable</p>
+              </div>
+              <div className="rounded-xl bg-slate-900/70 p-3">
+                <p className="text-slate-500">Agents</p>
+                <p className="font-bold text-cyan-300">5 Active</p>
+              </div>
+              <div className="rounded-xl bg-slate-900/70 p-3">
+                <p className="text-slate-500">Pipeline</p>
+                <p className="font-bold text-violet-300">Multi-agent</p>
+              </div>
+              <div className="rounded-xl bg-slate-900/70 p-3">
+                <p className="text-slate-500">Telemetry</p>
+                <p className="font-bold text-amber-300">Enabled</p>
+              </div>
+            </div>
+          </div>
+
           <p className="mt-1 text-xs leading-5 text-slate-500">
             Demo usage visibility for sales and client workspaces.
           </p>
@@ -2943,6 +2973,7 @@ function RecentAnalysesPanel({
     <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl">
       <div className="flex items-center justify-between gap-3">
         <div>
+
           <h3 className="text-lg font-bold">Recent Analyses</h3>
           <p className="mt-1 text-xs text-slate-500">Saved reports from this workspace.</p>
         </div>
