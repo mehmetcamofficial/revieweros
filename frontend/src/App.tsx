@@ -2768,7 +2768,9 @@ function PublicLandingPage({
           </div>
         </section>
 
-        <section className="mb-10 rounded-[2rem] border border-white/10 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-fuchsia-500/10 p-8 text-center backdrop-blur-xl">
+        
+
+<section className="mb-10 rounded-[2rem] border border-white/10 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-fuchsia-500/10 p-8 text-center backdrop-blur-xl">
           <h2 className="text-4xl font-black text-white">
             Ready to run an observable reviewer panel?
           </h2>
@@ -2792,6 +2794,9 @@ function PublicLandingPage({
             </button>
           </div>
         </section>
+          
+          
+
       </div>
 
       {architectureOpen && (
