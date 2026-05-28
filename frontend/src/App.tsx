@@ -1063,7 +1063,7 @@ function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1700px] px-6 py-8 md:px-8 md:py-10">
+      <main className="mx-auto w-full max-w-[1900px] px-6 py-8 md:px-8 md:py-10">
 
         
 
@@ -1295,7 +1295,7 @@ function App() {
               <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-950 p-10 text-center text-slate-500">
                 
 <div className="rounded-3xl border border-slate-800 bg-[#050816] p-8">
-  <div className="grid gap-8 2xl:grid-cols-[1.1fr_0.9fr]">
+  <div className="grid gap-8 2xl:grid-cols-[minmax(0,1.25fr)_minmax(520px,0.75fr)]">
     <div>
       <div className="mb-4 inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1 text-sm font-medium text-emerald-300">
         Welcome to Evalora
@@ -2389,7 +2389,7 @@ function PublicLandingPage({
         <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/45 via-transparent to-[#020617]/92" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-7xl px-6 py-5">
+      <div className="relative z-10 mx-auto w-full max-w-[1850px] px-6 py-5">
         <header className="sticky top-4 z-40 mb-12 rounded-3xl border border-white/10 bg-slate-950/72 px-5 py-3 shadow-[0_0_48px_rgba(20,184,166,0.12)] backdrop-blur-xl">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <button
@@ -2908,7 +2908,7 @@ function WorkspaceQuotaCard({
           </div>
 
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Demo usage visibility for sales and client workspaces.
+            Live workspace governance: quota, trace readiness, agent availability, and demo safety status.
           </p>
         </div>
 
@@ -3472,7 +3472,7 @@ function TelemetryBar({
   const activeAgents = loading ? Math.max(0, totalAgents - completedAgents) : 0;
 
   return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <section className="agent-timeline-compact grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
       <MetricCard title="Model" value={telemetry?.model || "gemini-2.5-flash-lite"} />
       <MetricCard title="Tokens" value={formatTelemetryValue(telemetry?.tokens)} />
       <MetricCard title="Estimated Cost" value={formatCost(telemetry?.cost_usd)} />
@@ -3503,39 +3503,59 @@ function TelemetryBar({
 function AgentTimeline({ events }: { events: StreamEvent[] }) {
   return (
     <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950 p-5">
-      <h3 className="text-lg font-semibold">Agent Activity Timeline</h3>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold">Agent Activity Timeline</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Live reviewer orchestration status
+          </p>
+        </div>
 
-      <div className="mt-5 space-y-4">
+        <div className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300">
+          {getCompletedAgents(events)}/5 completed
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-3">
         {reviewerSteps.map((step) => {
           const completed = isAgentCompleted(events, step);
           const failed = isAgentFailed(events, step);
           const active = isAgentActive(events, step);
 
           return (
-            <div key={step} className="flex items-center gap-3">
-              <div
-                className={`h-5 w-5 shrink-0 rounded-full ${
-                  completed
-                    ? "bg-emerald-400"
-                    : failed
-                      ? "bg-yellow-400"
-                      : active
-                        ? "animate-pulse bg-cyan-400"
-                        : "bg-slate-700"
-                }`}
-              />
-              <span
-                className={
-                  completed
-                    ? "text-white"
-                    : failed
-                      ? "text-yellow-200"
-                      : active
-                        ? "text-cyan-200"
-                        : "text-slate-400"
-                }
-              >
-                {step}
+            <div
+              key={step}
+              className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div
+                  className={`h-3.5 w-3.5 shrink-0 rounded-full ${
+                    completed
+                      ? "bg-emerald-400"
+                      : failed
+                        ? "bg-yellow-400"
+                        : active
+                          ? "animate-pulse bg-cyan-400"
+                          : "bg-slate-700"
+                  }`}
+                />
+                <span
+                  className={`truncate text-sm font-black ${
+                    completed
+                      ? "text-white"
+                      : failed
+                        ? "text-yellow-200"
+                        : active
+                          ? "text-cyan-200"
+                          : "text-slate-400"
+                  }`}
+                >
+                  {step}
+                </span>
+              </div>
+
+              <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                {completed ? "Done" : failed ? "Review" : active ? "Run" : "Wait"}
               </span>
             </div>
           );
