@@ -1987,7 +1987,7 @@ function LandingLogin({
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto grid max-w-[1700px] items-start gap-8 px-6 py-10 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:py-14 lg:[&>*:first-child]:sticky lg:[&>*:first-child]:top-6 lg:[&>*:first-child]:self-start lg:[&>*:first-child]:max-h-[calc(100vh-3rem)] lg:[&>*:first-child]:overflow-y-auto lg:[&>*:first-child]:rounded-[2rem] lg:[&>*:first-child]:border lg:[&>*:first-child]:border-slate-800/80 lg:[&>*:first-child]:bg-slate-950/35 lg:[&>*:first-child]:p-4 lg:[&>*:first-child]:min-h-[calc(100vh-4rem)]">
+      <main className="relative z-10 mx-auto grid max-w-[1700px] items-start gap-8 px-6 py-10 md:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:py-14 lg:[&>*:first-child]:sticky lg:[&>*:first-child]:top-6 lg:[&>*:first-child]:self-start">
         <section className="space-y-8">
           <div className="rounded-[2rem] border border-cyan-400/15 bg-slate-950/60 p-7 shadow-[0_0_40px_rgba(34,211,238,0.08)] backdrop-blur-xl">
             <p className="text-sm font-black uppercase tracking-[0.35em] text-cyan-300">
