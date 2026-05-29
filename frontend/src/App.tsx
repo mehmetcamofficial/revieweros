@@ -2666,7 +2666,105 @@ function PublicLandingPage({
           ))}
         </section>
 
-        <section ref={architectureRef} className="mb-14 scroll-mt-32 rounded-[2rem] border border-cyan-400/15 bg-slate-950/72 p-6 shadow-[0_0_44px_rgba(34,211,238,0.08)] backdrop-blur-xl">
+        
+        <section className="mb-14 rounded-[2rem] border border-cyan-400/15 bg-slate-950/70 p-7 shadow-[0_0_44px_rgba(34,211,238,0.08)] backdrop-blur-xl">
+          <div className="mb-7 text-center">
+            <p className="text-sm font-black uppercase tracking-[0.3em] text-cyan-300">
+              Before vs After
+            </p>
+            <h2 className="mt-3 text-3xl font-black text-white">
+              From Manual Review Chaos to Observable AI Evaluation
+            </h2>
+            <p className="mx-auto mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+              Evalora turns fragmented proposal review into a structured, traceable,
+              multi-agent decision workflow.
+            </p>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div className="rounded-[1.5rem] border border-rose-500/20 bg-rose-950/10 p-6">
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-rose-300">
+                Manual Review
+              </p>
+              <h3 className="mt-3 text-2xl font-black text-white">
+                Slow, inconsistent, hard to audit.
+              </h3>
+              <div className="mt-5 space-y-3">
+                {[
+                  "Scattered reviewer notes across files",
+                  "Unclear scoring criteria and rationale",
+                  "Limited traceability for decisions",
+                  "Difficult to compare reviewers fairly",
+                ].map((item) => (
+                  <div key={item} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300">
+                    <span className="mr-2 text-rose-300">×</span>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[1.5rem] border border-emerald-500/25 bg-emerald-950/10 p-6">
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-emerald-300">
+                Evalora ReviewOS
+              </p>
+              <h3 className="mt-3 text-2xl font-black text-white">
+                Structured, observable, decision-ready.
+              </h3>
+              <div className="mt-5 space-y-3">
+                {[
+                  "Five specialized AI reviewer agents",
+                  "Structured scoring with explainable rationale",
+                  "Runtime telemetry and exportable trace JSON",
+                  "Decision-ready PDF reports for review boards",
+                ].map((item) => (
+                  <div key={item} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300">
+                    <span className="mr-2 text-emerald-300">✓</span>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <section className="mb-14 rounded-[2rem] border border-violet-400/15 bg-slate-950/70 p-7 shadow-[0_0_44px_rgba(168,85,247,0.08)] backdrop-blur-xl">
+          <div className="mb-7 text-center">
+            <p className="text-sm font-black uppercase tracking-[0.3em] text-violet-300">
+              Use Cases
+            </p>
+            <h2 className="mt-3 text-3xl font-black text-white">
+              Built for Real Evaluation Workflows
+            </h2>
+            <p className="mx-auto mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+              From research funding to startup screening, Evalora provides a traceable
+              reviewer workflow for high-stakes evaluation processes.
+            </p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            {[
+              ["🎓", "Research Proposals", "Assess scientific merit, methodology, validation plans, feasibility, and expected impact."],
+              ["💰", "Grant Evaluation", "Structure funding readiness, risk review, innovation value, and decision rationale."],
+              ["🚀", "Accelerator Screening", "Compare startup applications across market, team, traction, GTM, and execution risk."],
+              ["🏆", "Hackathon Judging", "Support transparent multi-criteria judging with agent rationale and exportable reports."],
+            ].map(([icon, title, body]) => (
+              <div
+                key={title}
+                className="group rounded-[1.5rem] border border-slate-800 bg-slate-900/70 p-6 transition hover:-translate-y-1 hover:border-violet-400/35 hover:shadow-[0_0_28px_rgba(168,85,247,0.14)]"
+              >
+                <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-500/10 text-3xl transition group-hover:scale-110">
+                  {icon}
+                </div>
+                <h3 className="text-lg font-black text-white">{title}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-400">{body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+<section ref={architectureRef} className="mb-14 scroll-mt-32 rounded-[2rem] border border-cyan-400/15 bg-slate-950/72 p-6 shadow-[0_0_44px_rgba(34,211,238,0.08)] backdrop-blur-xl">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.3em] text-cyan-300">
