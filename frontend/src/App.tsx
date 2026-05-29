@@ -2215,13 +2215,14 @@ function PublicLandingPage({
   onEnter: () => void;
   onRequestAccess: () => void;
 }) {
-  type SectionKey = "about" | "workflow" | "architecture" | "pricing" | "docs";
+  type SectionKey = "about" | "workflow" | "architecture" | "pricing" | "docs" | "demo";
 
   const aboutRef = useRef<HTMLDivElement | null>(null);
   const workflowRef = useRef<HTMLDivElement | null>(null);
   const architectureRef = useRef<HTMLDivElement | null>(null);
   const pricingRef = useRef<HTMLDivElement | null>(null);
   const docsRef = useRef<HTMLDivElement | null>(null);
+  const demoRef = useRef<HTMLDivElement | null>(null);
 
   const [activeStep, setActiveStep] = useState(0);
   const [activeNav, setActiveNav] = useState<SectionKey>("about");
@@ -2283,6 +2284,7 @@ function PublicLandingPage({
     { key: "architecture" as const, label: "Architecture", ref: architectureRef },
     { key: "pricing" as const, label: "Pricing", ref: pricingRef },
     { key: "docs" as const, label: "Docs", ref: docsRef },
+    { key: "demo" as const, label: "Watch Demo", ref: demoRef },
   ];
 
   const workflowSteps = [
@@ -2792,6 +2794,33 @@ function PublicLandingPage({
             >
               Request Demo Access
             </button>
+          </div>
+
+          <div ref={demoRef} className="mx-auto mt-10 max-w-5xl scroll-mt-32 rounded-[2rem] border border-cyan-400/20 bg-slate-950/70 p-5 shadow-[0_0_50px_rgba(34,211,238,0.10)]">
+            <div className="mb-5 text-center">
+              <p className="text-xs font-black uppercase tracking-[0.35em] text-cyan-300">
+                Watch Demo
+              </p>
+              <h3 className="mt-2 text-2xl font-black text-white">
+                Watch Evalora in Action
+              </h3>
+              <p className="mx-auto mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                See how Evalora runs a multi-agent proposal review workflow, surfaces reviewer rationale,
+                and produces traceable evaluation output.
+              </p>
+            </div>
+
+            <div className="overflow-hidden rounded-[1.5rem] border border-slate-800 bg-black">
+              <iframe
+                className="aspect-video w-full"
+                src="https://www.youtube.com/embed/MN8dkipkv8Y?si=2uLuBp25CCM2POE7"
+                title="Evalora demo video"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
           </div>
         </section>
           
